@@ -1,0 +1,47 @@
+{
+  "name": "ShieldPolicy",
+  "type": "object",
+  "title": "Shield Policy",
+  "description": "A governance policy that maps action patterns to a required decision.",
+  "properties": {
+    "name": {
+      "type": "string",
+      "title": "Policy Name"
+    },
+    "description": {
+      "type": "string",
+      "title": "Description"
+    },
+    "match": {
+      "type": "object",
+      "title": "Match Criteria",
+      "additionalProperties": true,
+      "default": {}
+    },
+    "required_decision": {
+      "type": "string",
+      "enum": [
+        "allow",
+        "approval_required",
+        "blocked"
+      ],
+      "title": "Required Decision",
+      "default": "allow"
+    },
+    "priority": {
+      "type": "integer",
+      "title": "Priority",
+      "default": 10
+    },
+    "is_active": {
+      "type": "boolean",
+      "title": "Active",
+      "default": true
+    }
+  },
+  "required": [
+    "name",
+    "required_decision",
+    "priority"
+  ]
+}

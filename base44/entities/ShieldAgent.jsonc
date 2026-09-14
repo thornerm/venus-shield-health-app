@@ -1,0 +1,81 @@
+{
+  "name": "ShieldAgent",
+  "type": "object",
+  "title": "Shield Agent",
+  "description": "A registered AI agent passport under governance.",
+  "properties": {
+    "agent_id": {
+      "type": "string",
+      "title": "Agent ID"
+    },
+    "name": {
+      "type": "string",
+      "title": "Agent Name"
+    },
+    "owner_name": {
+      "type": "string",
+      "title": "Owner Name"
+    },
+    "owner_email": {
+      "type": "string",
+      "format": "email",
+      "title": "Owner Email"
+    },
+    "purpose": {
+      "type": "string",
+      "title": "Purpose"
+    },
+    "systems": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "title": "Authorized Systems",
+      "default": []
+    },
+    "financial_limit_usd": {
+      "type": "number",
+      "title": "Financial Limit (USD)",
+      "default": 0
+    },
+    "autonomy_level": {
+      "type": "string",
+      "enum": [
+        "full",
+        "standard",
+        "restricted"
+      ],
+      "title": "Autonomy Level",
+      "default": "standard"
+    },
+    "prohibited_actions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "title": "Prohibited Actions",
+      "default": []
+    },
+    "data_permissions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "title": "Data Permissions",
+      "default": []
+    },
+    "is_active": {
+      "type": "boolean",
+      "title": "Active",
+      "default": true
+    }
+  },
+  "required": [
+    "agent_id",
+    "name",
+    "owner_name",
+    "owner_email",
+    "purpose",
+    "autonomy_level"
+  ]
+}

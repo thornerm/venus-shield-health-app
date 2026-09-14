@@ -7,6 +7,13 @@ import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import ScrollToTop from './components/ScrollToTop';
 // Add page imports here
+import Layout from "@/components/Layout";
+import Dashboard from "@/pages/Dashboard";
+import AgentPassports from "@/pages/AgentPassports";
+import EvaluateAction from "@/pages/EvaluateAction";
+import Approvals from "@/pages/Approvals";
+import AuditTrail from "@/pages/AuditTrail";
+import RegisterAgent from "@/pages/RegisterAgent";
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -34,7 +41,14 @@ const AuthenticatedApp = () => {
   // Render the main app
   return (
     <Routes>
-      {/* Add your page Route elements here */}
+      <Route element={<Layout />}>
+        <Route path="/" element={<Dashboard />} />
+        <Route path="/passports" element={<AgentPassports />} />
+        <Route path="/evaluate" element={<EvaluateAction />} />
+        <Route path="/approvals" element={<Approvals />} />
+        <Route path="/audit" element={<AuditTrail />} />
+        <Route path="/register" element={<RegisterAgent />} />
+      </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );

@@ -1,0 +1,127 @@
+{
+  "name": "AgentApprovalRequest",
+  "type": "object",
+  "title": "Agent Approval Request",
+  "description": "A request to provision or modify an agent passport, pending human approval.",
+  "properties": {
+    "request_type": {
+      "type": "string",
+      "enum": [
+        "new_agent",
+        "modified_passport"
+      ],
+      "title": "Request Type",
+      "default": "new_agent"
+    },
+    "agent_id": {
+      "type": "string",
+      "title": "Agent ID"
+    },
+    "name": {
+      "type": "string",
+      "title": "Agent Name"
+    },
+    "owner_name": {
+      "type": "string",
+      "title": "Owner Name"
+    },
+    "owner_email": {
+      "type": "string",
+      "format": "email",
+      "title": "Owner Email"
+    },
+    "purpose": {
+      "type": "string",
+      "title": "Purpose"
+    },
+    "systems": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "title": "Authorized Systems",
+      "default": []
+    },
+    "financial_limit_usd": {
+      "type": "number",
+      "title": "Financial Limit (USD)",
+      "default": 0
+    },
+    "autonomy_level": {
+      "type": "string",
+      "enum": [
+        "full",
+        "standard",
+        "restricted"
+      ],
+      "title": "Autonomy Level",
+      "default": "standard"
+    },
+    "prohibited_actions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "title": "Prohibited Actions",
+      "default": []
+    },
+    "data_permissions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "title": "Data Permissions",
+      "default": []
+    },
+    "notes": {
+      "type": "string",
+      "title": "Notes"
+    },
+    "requested_by": {
+      "type": "string",
+      "title": "Requested By"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "approved",
+        "denied"
+      ],
+      "title": "Status",
+      "default": "pending"
+    },
+    "approval_token": {
+      "type": "string",
+      "title": "Approval Token"
+    },
+    "decided_by": {
+      "type": "string",
+      "title": "Decided By"
+    },
+    "decided_date": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Decided Date"
+    },
+    "reasons": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "title": "Decision Reasons",
+      "default": []
+    },
+    "resulting_agent_record_id": {
+      "type": "string",
+      "title": "Resulting Agent Record ID"
+    }
+  },
+  "required": [
+    "agent_id",
+    "name",
+    "owner_email",
+    "request_type",
+    "status"
+  ]
+}

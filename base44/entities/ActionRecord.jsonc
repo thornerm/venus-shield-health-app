@@ -1,0 +1,124 @@
+{
+  "name": "ActionRecord",
+  "type": "object",
+  "title": "Action Record",
+  "description": "A governed action evaluated against an agent's passport, with full reasoning trace.",
+  "properties": {
+    "agent_id": {
+      "type": "string",
+      "title": "Agent ID"
+    },
+    "agent_name": {
+      "type": "string",
+      "title": "Agent Name"
+    },
+    "action_type": {
+      "type": "string",
+      "title": "Action Type"
+    },
+    "target_system": {
+      "type": "string",
+      "title": "Target System"
+    },
+    "amount_usd": {
+      "type": "number",
+      "title": "Amount (USD)",
+      "default": 0
+    },
+    "params": {
+      "type": "object",
+      "title": "Parameters",
+      "additionalProperties": true,
+      "default": {}
+    },
+    "blast_radius_score": {
+      "type": "integer",
+      "title": "Blast Radius (1-5)",
+      "minimum": 1,
+      "maximum": 5,
+      "default": 1
+    },
+    "reversibility": {
+      "type": "string",
+      "enum": [
+        "reversible",
+        "partially_reversible",
+        "irreversible"
+      ],
+      "title": "Reversibility",
+      "default": "reversible"
+    },
+    "decision": {
+      "type": "string",
+      "enum": [
+        "allow",
+        "approval_required",
+        "blocked"
+      ],
+      "title": "Decision",
+      "default": "allow"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "executed",
+        "pending_approval",
+        "approved",
+        "denied",
+        "blocked"
+      ],
+      "title": "Status",
+      "default": "executed"
+    },
+    "policy_matched_name": {
+      "type": "string",
+      "title": "Matched Policy Name"
+    },
+    "policy_matched_priority": {
+      "type": "integer",
+      "title": "Matched Policy Priority"
+    },
+    "decided_by": {
+      "type": "string",
+      "title": "Decided By"
+    },
+    "decided_date": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Decided Date"
+    },
+    "alert_owner": {
+      "type": "boolean",
+      "title": "Owner Alerted",
+      "default": false
+    },
+    "autonomy_downgraded": {
+      "type": "boolean",
+      "title": "Autonomy Downgraded",
+      "default": false
+    },
+    "previous_autonomy_level": {
+      "type": "string",
+      "title": "Previous Autonomy"
+    },
+    "new_autonomy_level": {
+      "type": "string",
+      "title": "New Autonomy"
+    },
+    "reasons": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "title": "Evaluation Trace",
+      "default": []
+    }
+  },
+  "required": [
+    "agent_id",
+    "action_type",
+    "target_system",
+    "decision",
+    "status"
+  ]
+}
