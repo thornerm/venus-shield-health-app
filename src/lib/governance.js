@@ -189,21 +189,21 @@ export async function evaluateAction({ agent_id, action_type, target_system, amo
   add("ASSESS", `Blast radius: ${blast}/5. Reversibility: ${reversibility}.`);
 
   // Evaluate ALL matching policies and resolve conflicts.
-  let policyMatches = [];
+  let matchedList = [];
   let decisiveDecision = "allow";
   let decisivePolicy = null;
   try {
     const policies = await base44.entities.ShieldPolicy.filter({ is_active: true });
-    const matched = (policies || []).filter((p) => policyMatches(p, { action_type, target_system, amount_usd, params }, exfil));
+    const matched = (policies || []).filter((p) => policyMatchesFn(p, { action_type, target_system, amount_usd, params }, exfil));
     const resolved = resolvePolicyConflicts(matched);
-    policyMatches = resolved.matches;
+    matchedList = resolved.matches;
     decisiveDecision = resolved.decisiveDecision;
     decisivePolicy = resolved.decisivePolicy;
-    if (policyMatches.length === 0) {
+    if (matchedList.length === 0) {
       add("POLICY MATCH", "No explicit policy matched; passport rules govern.");
     } else {
-      add("POLICY MATCH", `${policyMatches.length} policy(ies) matched:`);
-      policyMatches.forEach((m) => add("POLICY MATCH", `"${m.name}" (priority ${m.priority}) → required decision: ${m.required_decision}.`));
+      add("POLICY MATCH", `${matchedList.length} policy(ies) matched:`);
+      matchedList.forEach((m) => add("POLICY MATCH", `"${m.name}" (priority ${m.priority}) → required decision: ${m.required_decision}.`));
       add("CONFLICT", `Conflict resolution (blocked > approval_required > allow): decisive policy "${decisivePolicy.name}" → ${decisiveDecision}.`);
     }
   } catch (e) {
@@ -298,7 +298,7 @@ export async function evaluateAction({ agent_id, action_type, target_system, amo
     decision,
     status,
     requested_by: requester,
-    policy_matches: policyMatches,
+    policy_matches: matchedList,
     policy_matched_name: decisivePolicy?.name || null,
     policy_matched_priority: decisivePolicy?.priority ?? null,
     financial_limit_mode: finMode,
@@ -337,7 +337,7 @@ export async function evaluateAction({ agent_id, action_type, target_system, amo
     agent: { ...agent, autonomy_level: downgrade ? "restricted" : agent.autonomy_level },
     blast_radius_score: decision === "blocked" ? 5 : blast,
     reversibility: decision === "blocked" ? "irreversible" : reversibility,
-    policyMatches,
+    policyMatches: matchedList,
     decisivePolicy,
     financialLimitMode: finMode,
   };
