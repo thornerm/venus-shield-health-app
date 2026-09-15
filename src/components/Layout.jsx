@@ -6,12 +6,12 @@ import { Shield, Menu, LayoutDashboard, ShieldCheck, ScanSearch, ClipboardCheck,
 import { APPROVER_NAME, APPROVER_EMAIL } from "@/lib/governance";
 
 const NAV = [
+  { to: "/register", label: "Register Agent", icon: UserPlus },
   { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true },
   { to: "/passports", label: "Agent Passports", icon: ShieldCheck },
   { to: "/evaluate", label: "Evaluate Action", icon: ScanSearch },
   { to: "/approvals", label: "Approvals", icon: ClipboardCheck },
   { to: "/audit", label: "Audit Trail", icon: ScrollText },
-  { to: "/register", label: "Register Agent", icon: UserPlus },
 ];
 
 function Brand() {
