@@ -195,7 +195,7 @@
           "created_by_id": "{{user.id}}"
         },
         {
-          "data.owner_email": "{{user.email}"
+          "data.owner_email": "{{user.email}}"
         },
         {
           "user_condition": {
