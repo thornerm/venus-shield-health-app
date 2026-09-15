@@ -20,6 +20,7 @@ import PolicyDetails from "@/pages/PolicyDetails";
 import AgentPerformance from "@/pages/AgentPerformance";
 import AccountSettings from "@/pages/AccountSettings";
 import ReportExport from "@/pages/ReportExport";
+import PassportDetail from "@/pages/PassportDetail";
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -50,6 +51,7 @@ const AuthenticatedApp = () => {
       <Route element={<Layout />}>
         <Route path="/" element={<Dashboard />} />
         <Route path="/passports" element={<AgentPassports />} />
+        <Route path="/passports/:id" element={<PassportDetail />} />
         <Route path="/evaluate" element={<EvaluateAction />} />
         <Route path="/airtp" element={<AirtpSession />} />
         <Route path="/approvals" element={<Approvals />} />
