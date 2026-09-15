@@ -11,6 +11,7 @@ import Layout from "@/components/Layout";
 import Dashboard from "@/pages/Dashboard";
 import AgentPassports from "@/pages/AgentPassports";
 import EvaluateAction from "@/pages/EvaluateAction";
+import AirtpSession from "@/pages/AirtpSession";
 import Approvals from "@/pages/Approvals";
 import AuditTrail from "@/pages/AuditTrail";
 import RegisterAgent from "@/pages/RegisterAgent";
@@ -50,6 +51,7 @@ const AuthenticatedApp = () => {
         <Route path="/" element={<Dashboard />} />
         <Route path="/passports" element={<AgentPassports />} />
         <Route path="/evaluate" element={<EvaluateAction />} />
+        <Route path="/airtp" element={<AirtpSession />} />
         <Route path="/approvals" element={<Approvals />} />
         <Route path="/audit" element={<AuditTrail />} />
         <Route path="/register" element={<RegisterAgent />} />
