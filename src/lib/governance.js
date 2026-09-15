@@ -120,7 +120,7 @@ function reversibilityFor(action_type, blast, exfil) {
   return "reversible";
 }
 
-function policyMatches(policy, action, exfil) {
+function policyMatchesFn(policy, action, exfil) {
   const m = policy.match || {};
   if (!m || Object.keys(m).length === 0) return false;
   if (Array.isArray(m.action_types) && !m.action_types.map((x) => String(x).toLowerCase()).includes((action.action_type || "").toLowerCase())) return false;
