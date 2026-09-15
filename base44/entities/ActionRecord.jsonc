@@ -70,13 +70,35 @@
       "title": "Status",
       "default": "executed"
     },
+    "requested_by": {
+      "type": "string",
+      "title": "Requested By"
+    },
+    "policy_matches": {
+      "type": "array",
+      "title": "All Matched Policies",
+      "default": [],
+      "items": {
+        "type": "object",
+        "additionalProperties": true
+      }
+    },
     "policy_matched_name": {
       "type": "string",
-      "title": "Matched Policy Name"
+      "title": "Decisive Policy Name"
     },
     "policy_matched_priority": {
       "type": "integer",
-      "title": "Matched Policy Priority"
+      "title": "Decisive Policy Priority"
+    },
+    "financial_limit_mode": {
+      "type": "string",
+      "enum": [
+        "approval_threshold",
+        "hard_cap"
+      ],
+      "title": "Financial Limit Mode",
+      "default": "approval_threshold"
     },
     "decided_by": {
       "type": "string",

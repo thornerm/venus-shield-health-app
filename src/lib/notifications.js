@@ -42,11 +42,12 @@ function buildHtml({ blocked, rows, reasons, ctaUrl, ctaLabel }) {
  * blocked or requires manual approval. The approver is always notified; the
  * agent owner is additionally notified on blocked events.
  */
-export async function notifySecurityEvent({ event, record, agent, blast, reversibility, prevAuto, newAuto }) {
+export async function notifySecurityEvent({ event, record, agent, blast, reversibility, prevAuto, newAuto, approverEmail }) {
   const blocked = event === "blocked";
+  const approver = approverEmail || APPROVER_EMAIL;
   const recipients = blocked
-    ? [APPROVER_EMAIL, agent?.owner_email]
-    : [APPROVER_EMAIL];
+    ? [approver, agent?.owner_email]
+    : [approver];
   const unique = [...new Set(recipients.filter(Boolean))];
 
   const subject = blocked

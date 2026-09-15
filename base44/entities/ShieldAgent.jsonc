@@ -38,6 +38,15 @@
       "title": "Financial Limit (USD)",
       "default": 0
     },
+    "financial_limit_mode": {
+      "type": "string",
+      "enum": [
+        "approval_threshold",
+        "hard_cap"
+      ],
+      "title": "Financial Limit Mode",
+      "default": "approval_threshold"
+    },
     "autonomy_level": {
       "type": "string",
       "enum": [

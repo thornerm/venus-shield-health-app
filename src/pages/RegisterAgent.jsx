@@ -1,23 +1,34 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { AUTONOMY_DEFINITIONS, APPROVER_NAME, APPROVER_EMAIL, APPROVER_DISPLAY } from "@/lib/governance";
+import { AUTONOMY_DEFINITIONS, FINANCIAL_LIMIT_MODES } from "@/lib/governance";
+import { useAuth } from "@/lib/AuthContext";
 import { UserPlus, CheckCircle2, Info } from "lucide-react";
 
 const AUTONOMY_KEYS = ["full", "standard", "restricted"];
+const FIN_MODE_KEYS = ["approval_threshold", "hard_cap"];
 
 export default function RegisterAgent() {
+  const { user } = useAuth();
   const [form, setForm] = useState({
-    agent_id: "", name: "", owner_name: APPROVER_NAME, owner_email: APPROVER_EMAIL,
-    purpose: "", systems: "", financial_limit_usd: 0, autonomy_level: "standard",
-    prohibited_actions: "export_database", data_permissions: "", notes: "",
+    agent_id: "", name: "", owner_name: "", owner_email: "",
+    purpose: "", systems: "", financial_limit_usd: 0, financial_limit_mode: "approval_threshold",
+    autonomy_level: "standard", prohibited_actions: "export_database", data_permissions: "", notes: "",
   });
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(null);
+
+  // Default the agent owner to the authenticated user (the requester). The owner
+  // remains a distinct, editable field — it is not assumed to equal the requester.
+  useEffect(() => {
+    if (user && !form.owner_name && !form.owner_email) {
+      setForm((f) => ({ ...f, owner_name: user.full_name || "", owner_email: user.email || "" }));
+    }
+  }, [user]);
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -26,6 +37,7 @@ export default function RegisterAgent() {
     setSubmitting(true);
     setDone(null);
     try {
+      const requesterDisplay = user ? `${user.full_name || ""} <${user.email || ""}>`.trim() : "";
       const payload = {
         request_type: "new_agent",
         agent_id: form.agent_id.trim(),
@@ -35,11 +47,12 @@ export default function RegisterAgent() {
         purpose: form.purpose.trim(),
         systems: form.systems.split(",").map((s) => s.trim()).filter(Boolean),
         financial_limit_usd: Number(form.financial_limit_usd) || 0,
+        financial_limit_mode: form.financial_limit_mode,
         autonomy_level: form.autonomy_level,
         prohibited_actions: form.prohibited_actions.split(",").map((s) => s.trim()).filter(Boolean),
         data_permissions: form.data_permissions.split(",").map((s) => s.trim()).filter(Boolean),
         notes: form.notes.trim(),
-        requested_by: APPROVER_DISPLAY,
+        requested_by: requesterDisplay,
         status: "pending",
         approval_token: "tok_" + Math.random().toString(36).slice(2, 12),
       };
@@ -63,7 +76,7 @@ export default function RegisterAgent() {
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base"><UserPlus className="h-4 w-4 text-primary" /> Agent Intake</CardTitle>
-            <CardDescription>All fields are required for governance review.</CardDescription>
+            <CardDescription>All fields are required for governance review. The request is attributed to you ({user?.email || "—"}).</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={submit} className="space-y-4">
@@ -78,6 +91,12 @@ export default function RegisterAgent() {
                 <Field label="Authorized Systems" hint="Comma-separated"><Input value={form.systems} onChange={(e) => set("systems", e.target.value)} placeholder="crm, billing" /></Field>
                 <Field label="Financial Limit (USD)"><Input type="number" value={form.financial_limit_usd} onChange={(e) => set("financial_limit_usd", e.target.value)} /></Field>
               </div>
+              <Field label="Financial Limit Mode" required>
+                <select value={form.financial_limit_mode} onChange={(e) => set("financial_limit_mode", e.target.value)} className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm">
+                  {FIN_MODE_KEYS.map((k) => <option key={k} value={k}>{FINANCIAL_LIMIT_MODES[k].label}</option>)}
+                </select>
+                <div className="mt-1 text-xs text-muted-foreground">{FINANCIAL_LIMIT_MODES[form.financial_limit_mode].description}</div>
+              </Field>
               <Field label="Prohibited Actions" hint="Comma-separated"><Input value={form.prohibited_actions} onChange={(e) => set("prohibited_actions", e.target.value)} placeholder="export_database" /></Field>
               <Field label="Data Permissions" hint="Comma-separated"><Input value={form.data_permissions} onChange={(e) => set("data_permissions", e.target.value)} placeholder="crm_read, crm_write" /></Field>
 

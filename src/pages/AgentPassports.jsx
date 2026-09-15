@@ -66,10 +66,15 @@ export default function AgentPassports() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
-                  <DollarSign className="h-3.5 w-3.5 text-muted-foreground" />
-                  <span className="text-xs text-muted-foreground">Financial limit</span>
-                  <span className="ml-auto font-medium">${Number(ag.financial_limit_usd || 0).toLocaleString()}</span>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <DollarSign className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span className="text-xs text-muted-foreground">Financial limit</span>
+                    <span className="ml-auto font-medium">${Number(ag.financial_limit_usd || 0).toLocaleString()}</span>
+                  </div>
+                  <div className="text-[11px] text-muted-foreground">
+                    {ag.financial_limit_mode === "hard_cap" ? "Hard cap — over-limit actions are blocked" : "Approval threshold — over-limit actions require approval"}
+                  </div>
                 </div>
 
                 <div>

@@ -6,13 +6,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { VerdictBadge } from "@/components/VerdictBadge";
-import { DEMO_SCENARIOS, AUTONOMY_DEFINITIONS } from "@/lib/governance";
-import { evaluateAction } from "@/lib/governance";
-import { Zap, AlertTriangle, ShieldCheck, ScanSearch, Activity, Mail } from "lucide-react";
+import { DEMO_SCENARIOS, AUTONOMY_DEFINITIONS, FINANCIAL_LIMIT_MODES, evaluateAction } from "@/lib/governance";
+import { useAuth } from "@/lib/AuthContext";
+import { getCurrentActor } from "@/lib/identity";
+import { Zap, AlertTriangle, ShieldCheck, ScanSearch, Activity, Mail, Layers } from "lucide-react";
 
 const REV_META = { reversible: { label: "Reversible", cls: "text-allow" }, partially_reversible: { label: "Partially Reversible", cls: "text-review" }, irreversible: { label: "Irreversible", cls: "text-blocked" } };
 
 export default function EvaluateAction() {
+  const { user } = useAuth();
   const [agents, setAgents] = useState([]);
   const [agentId, setAgentId] = useState("");
   const [actionType, setActionType] = useState("");
@@ -49,7 +51,8 @@ export default function EvaluateAction() {
     if (!agentId || !actionType || !targetSystem) { setError("Agent, action type, and target system are required."); return; }
     setLoading(true);
     try {
-      const res = await evaluateAction({ agent_id: agentId, action_type: actionType, target_system: targetSystem, amount_usd: Number(amount) || 0, params });
+      const actor = await getCurrentActor();
+      const res = await evaluateAction({ agent_id: agentId, action_type: actionType, target_system: targetSystem, amount_usd: Number(amount) || 0, params, actor });
       if (res.error) { setError(res.error); }
       else { setResult(res); }
     } catch (e) { setError(e?.message || "Evaluation failed."); }
@@ -60,7 +63,7 @@ export default function EvaluateAction() {
     <div className="space-y-6">
       <div>
         <h1 className="font-heading text-2xl font-bold tracking-tight">Evaluate Action</h1>
-        <p className="text-sm text-muted-foreground">Run a proposed agent action through the governance engine. Every verdict is recorded with a full reasoning trace.</p>
+        <p className="text-sm text-muted-foreground">Run a proposed agent action through the governance engine. Every verdict is recorded with a full reasoning trace and attributed to you ({user?.email || "—"}).</p>
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -68,12 +71,15 @@ export default function EvaluateAction() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base"><Zap className="h-4 w-4 text-primary" /> Demo Scenarios</CardTitle>
-              <CardDescription>One-click presets that exercise each verdict path.</CardDescription>
+              <CardDescription>One-click presets that exercise each verdict path. These are demo identities.</CardDescription>
             </CardHeader>
             <CardContent className="grid gap-2 sm:grid-cols-3">
               {DEMO_SCENARIOS.map((s) => (
                 <button key={s.id} onClick={() => applyPreset(s)} className="rounded-lg border border-border bg-card p-3 text-left transition-colors hover:border-primary/40 hover:bg-primary/5">
-                  <div className="text-sm font-medium">{s.label}</div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Demo</span>
+                    <span className="text-sm font-medium">{s.label}</span>
+                  </div>
                   <div className="mt-0.5 text-xs text-muted-foreground">{s.description}</div>
                 </button>
               ))}
@@ -125,17 +131,37 @@ export default function EvaluateAction() {
                   <CardTitle className="text-base">Verdict</CardTitle>
                   <VerdictBadge decision={result.decision} />
                 </div>
+                <CardDescription>Requested by {result.record.requested_by || "—"} · Decided by {result.record.decided_by || "—"}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 gap-3">
                   <Metric icon={Activity} label="Blast Radius" value={`${result.blast_radius_score}/5`} />
                   <Metric icon={ShieldCheck} label="Reversibility" value={REV_META[result.reversibility]?.label || result.reversibility} valueCls={REV_META[result.reversibility]?.cls} />
                 </div>
+
                 <div className="rounded-md border border-border bg-muted/40 p-3 text-sm">
-                  <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Matched Policy</div>
-                  <div className="mt-1 font-medium">{result.record.policy_matched_name || "No explicit policy — passport rules"}</div>
-                  {result.record.policy_matched_priority != null && <div className="text-xs text-muted-foreground">Priority {result.record.policy_matched_priority}</div>}
+                  <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Financial Limit</div>
+                  <div className="mt-1 font-medium">{FINANCIAL_LIMIT_MODES[result.financialLimitMode]?.label || result.financialLimitMode}</div>
+                  <div className="text-xs text-muted-foreground">{FINANCIAL_LIMIT_MODES[result.financialLimitMode]?.description}</div>
                 </div>
+
+                <div className="rounded-md border border-border bg-muted/40 p-3">
+                  <div className="mb-1 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground"><Layers className="h-3 w-3" /> Matched Policies ({result.policyMatches?.length || 0})</div>
+                  {result.policyMatches?.length ? (
+                    <div className="space-y-1.5">
+                      {result.policyMatches.map((m, i) => (
+                        <div key={i} className="flex items-center justify-between rounded-md border border-border bg-card px-2.5 py-1.5 text-xs">
+                          <span className="font-medium">{m.name} <span className="text-muted-foreground">(priority {m.priority})</span></span>
+                          <VerdictBadge decision={m.required_decision} />
+                        </div>
+                      ))}
+                      <div className="pt-1 text-xs text-muted-foreground">Conflict rule applied: blocked &gt; approval_required &gt; allow → decisive policy <span className="font-medium text-foreground">{result.decisivePolicy?.name || "none"}</span>.</div>
+                    </div>
+                  ) : (
+                    <div className="text-xs text-muted-foreground">No explicit policy matched — passport rules governed the decision.</div>
+                  )}
+                </div>
+
                 {result.record.autonomy_downgraded && (
                   <div className="flex items-center gap-2 rounded-md bg-blocked/10 px-3 py-2 text-sm text-blocked">
                     <AlertTriangle className="h-4 w-4" />
@@ -165,7 +191,7 @@ export default function EvaluateAction() {
           ) : (
             <Card><CardContent className="flex h-full min-h-[300px] flex-col items-center justify-center text-center text-sm text-muted-foreground">
               <ScanSearch className="mb-2 h-8 w-8 opacity-40" />
-              Run an evaluation to see the verdict, blast radius, and full reasoning trace here.
+              Run an evaluation to see the verdict, all matched policies, and the full reasoning trace here.
             </CardContent></Card>
           )}
         </div>

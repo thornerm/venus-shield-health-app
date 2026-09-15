@@ -3,7 +3,8 @@ import { useState } from "react";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Shield, Menu, LayoutDashboard, ShieldCheck, ScanSearch, ClipboardCheck, ScrollText, UserPlus, Scale, TrendingUp, Settings, FileDown, Radio } from "lucide-react";
-import { APPROVER_NAME, APPROVER_EMAIL } from "@/lib/governance";
+import { useAuth } from "@/lib/AuthContext";
+import { roleLabel } from "@/lib/identity";
 
 const NAV = [
   { to: "/register", label: "Register Agent", icon: UserPlus },
@@ -63,12 +64,13 @@ function NavList({ onNavigate }) {
 }
 
 function Footer() {
+  const { user } = useAuth();
   return (
     <div className="border-t border-border p-3">
       <div className="rounded-md bg-muted/50 px-3 py-2">
-        <div className="text-xs font-medium text-foreground">{APPROVER_NAME}</div>
-        <div className="truncate text-[11px] text-muted-foreground">{APPROVER_EMAIL}</div>
-        <div className="mt-1 text-[10px] uppercase tracking-wider text-muted-foreground">Governance Approver</div>
+        <div className="text-xs font-medium text-foreground">{user?.full_name || "—"}</div>
+        <div className="truncate text-[11px] text-muted-foreground">{user?.email || "—"}</div>
+        <div className="mt-1 text-[10px] uppercase tracking-wider text-muted-foreground">{roleLabel(user?.role)}</div>
       </div>
     </div>
   );

@@ -4,14 +4,17 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { StatusBadge, VerdictBadge } from "@/components/VerdictBadge";
 import AutonomyBadge from "@/components/AutonomyBadge";
-import { approveAgentRequest, denyAgentRequest, approveAction, denyAction } from "@/lib/governance";
-import { ClipboardCheck, ShieldCheck, Check, X, RefreshCw } from "lucide-react";
+import { approveAgentRequest, denyAgentRequest, approveAction, denyAction, FINANCIAL_LIMIT_MODES } from "@/lib/governance";
+import { useAuth } from "@/lib/AuthContext";
+import { ClipboardCheck, ShieldCheck, Check, X, RefreshCw, AlertTriangle } from "lucide-react";
 
 export default function Approvals() {
+  const { user } = useAuth();
   const [requests, setRequests] = useState([]);
   const [actions, setActions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState("");
+  const [error, setError] = useState("");
 
   const load = async () => {
     setLoading(true);
@@ -25,22 +28,54 @@ export default function Approvals() {
   };
   useEffect(() => { load(); }, []);
 
-  const onApproveAgent = async (id) => { setBusy(id); try { await approveAgentRequest(id); } finally { setBusy(""); load(); } };
-  const onDenyAgent = async (id) => { setBusy(id); try { await denyAgentRequest(id); } finally { setBusy(""); load(); } };
-  const onApproveAction = async (id) => { setBusy(id); try { await approveAction(id); } finally { setBusy(""); load(); } };
-  const onDenyAction = async (id) => { setBusy(id); try { await denyAction(id); } finally { setBusy(""); load(); } };
+  const actor = user ? { id: user.id, name: user.full_name, email: user.email, display: `${user.full_name || ""} <${user.email || ""}>`.trim(), role: user.role } : null;
+  const actorDisplay = actor?.display || "";
+
+  const canDecide = () => actor?.role === "admin";
+  const canApproveAgent = (r) => canDecide() && r.requested_by !== actorDisplay && (!r.owner_email || !actor?.email || actor.email.toLowerCase() !== r.owner_email.toLowerCase());
+  const canApproveAction = (a) => canDecide() && a.requested_by !== actorDisplay;
+
+  const run = async (fn, id) => {
+    setBusy(id); setError("");
+    try {
+      const res = await fn();
+      if (res?.ok === false) setError(res.error || "Action failed.");
+    } catch (e) { setError(e?.message || "Action failed."); }
+    setBusy("");
+    load();
+  };
+
+  const onApproveAgent = (id) => run(() => approveAgentRequest(id, actor), id);
+  const onDenyAgent = (id, reason) => run(() => denyAgentRequest(id, actor, reason), id);
+  const onApproveAction = (id) => run(() => approveAction(id, actor), id);
+  const onDenyAction = (id, reason) => run(() => denyAction(id, actor, reason), id);
+
+  const SelfApproveNote = () => (
+    <div className="mt-2 flex items-center gap-1.5 text-xs text-review">
+      <AlertTriangle className="h-3 w-3" /> You cannot approve your own request — another admin must review it.
+    </div>
+  );
+  const RoleNote = () => (
+    <div className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
+      <AlertTriangle className="h-3 w-3" /> Only a governance admin can approve or deny.
+    </div>
+  );
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="font-heading text-2xl font-bold tracking-tight">Approvals</h1>
-          <p className="text-sm text-muted-foreground">Human-in-the-loop review for new agent passports and escalated actions.</p>
+          <p className="text-sm text-muted-foreground">Human-in-the-loop review for new agent passports and escalated actions. Decisions are attributed to you.</p>
         </div>
         <Button variant="outline" size="sm" onClick={load} disabled={loading}>
           <RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} /> Refresh
         </Button>
       </div>
+
+      {error && (
+        <div className="flex items-center gap-2 rounded-md bg-blocked/10 px-3 py-2 text-sm text-blocked"><AlertTriangle className="h-4 w-4" />{error}</div>
+      )}
 
       <Card>
         <CardHeader>
@@ -64,17 +99,20 @@ export default function Approvals() {
                       <div className="text-sm text-muted-foreground">{r.purpose}</div>
                       <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
                         <span>Owner: {r.owner_name} · {r.owner_email}</span>
+                        <span>Requested by: {r.requested_by || "—"}</span>
                         <span>Systems: {(r.systems || []).join(", ") || "none"}</span>
-                        <span>Limit: ${Number(r.financial_limit_usd || 0).toLocaleString()}</span>
+                        <span>Limit: ${Number(r.financial_limit_usd || 0).toLocaleString()} ({FINANCIAL_LIMIT_MODES[r.financial_limit_mode || "approval_threshold"]?.label})</span>
                         <span>Prohibited: {(r.prohibited_actions || []).join(", ") || "none"}</span>
                       </div>
                       {r.notes && <div className="text-xs italic text-muted-foreground">Notes: {r.notes}</div>}
+                      {!canApproveAgent(r) && canDecide() && <SelfApproveNote />}
+                      {!canDecide() && <RoleNote />}
                     </div>
                     <div className="flex gap-2">
-                      <Button size="sm" onClick={() => onApproveAgent(r.id)} disabled={busy === r.id}>
+                      <Button size="sm" onClick={() => onApproveAgent(r.id)} disabled={busy === r.id || !canApproveAgent(r)}>
                         <Check className="mr-1 h-4 w-4" /> Approve
                       </Button>
-                      <Button size="sm" variant="outline" onClick={() => onDenyAgent(r.id)} disabled={busy === r.id}>
+                      <Button size="sm" variant="outline" onClick={() => onDenyAgent(r.id)} disabled={busy === r.id || !canDecide()}>
                         <X className="mr-1 h-4 w-4" /> Deny
                       </Button>
                     </div>
@@ -108,17 +146,21 @@ export default function Approvals() {
                       </div>
                       <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
                         <span>Agent: {a.agent_name} ({a.agent_id})</span>
+                        <span>Requested by: {a.requested_by || "—"}</span>
                         <span>Amount: ${Number(a.amount_usd || 0).toLocaleString()}</span>
                         <span>Blast: {a.blast_radius_score}/5</span>
                         <span>Reversibility: {a.reversibility?.replace("_", " ")}</span>
-                        {a.policy_matched_name && <span>Policy: {a.policy_matched_name}</span>}
+                        {a.financial_limit_mode && <span>Limit mode: {FINANCIAL_LIMIT_MODES[a.financial_limit_mode]?.label || a.financial_limit_mode}</span>}
+                        {a.policy_matched_name && <span>Decisive policy: {a.policy_matched_name}</span>}
                       </div>
+                      {!canApproveAction(a) && canDecide() && <SelfApproveNote />}
+                      {!canDecide() && <RoleNote />}
                     </div>
                     <div className="flex gap-2">
-                      <Button size="sm" onClick={() => onApproveAction(a.id)} disabled={busy === a.id}>
+                      <Button size="sm" onClick={() => onApproveAction(a.id)} disabled={busy === a.id || !canApproveAction(a)}>
                         <Check className="mr-1 h-4 w-4" /> Approve
                       </Button>
-                      <Button size="sm" variant="outline" onClick={() => onDenyAction(a.id)} disabled={busy === a.id}>
+                      <Button size="sm" variant="outline" onClick={() => onDenyAction(a.id)} disabled={busy === a.id || !canDecide()}>
                         <X className="mr-1 h-4 w-4" /> Deny
                       </Button>
                     </div>
