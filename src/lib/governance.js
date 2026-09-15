@@ -1,4 +1,5 @@
 import { base44 } from "@/api/base44Client";
+import { notifySecurityEvent } from "@/lib/notifications";
 
 export const APPROVER_NAME = "Micah Thorner";
 export const APPROVER_EMAIL = "micah@venusaipros.com";
@@ -236,28 +237,25 @@ export async function evaluateAction({ agent_id, action_type, target_system, amo
   if (downgrade) {
     try { await base44.entities.ShieldAgent.update(agent.id, { autonomy_level: "restricted" }); } catch (e) { /* noop */ }
   }
-  if (decision === "approval_required") {
+  let notification = null;
+  if (decision === "blocked" || decision === "approval_required") {
     try {
-      await base44.integrations.Core.SendEmail({
-        to: APPROVER_EMAIL,
-        subject: `[Venus Shield] Approval required: ${action_type} by ${agent.name}`,
-        body: `An action requires your approval.\n\nAgent: ${agent.name} (${agent.agent_id})\nAction: ${action_type}\nTarget: ${target_system}\nAmount: $${Number(amount_usd || 0).toLocaleString()}\nBlast radius: ${blast}/5\nReversibility: ${reversibility}\nDecision: APPROVAL REQUIRED\n\nReview pending actions in the Approvals queue.`,
+      notification = await notifySecurityEvent({
+        event: decision,
+        record,
+        agent,
+        blast: decision === "blocked" ? 5 : blast,
+        reversibility: decision === "blocked" ? "irreversible" : reversibility,
+        prevAuto,
+        newAuto: decision === "blocked" ? newAuto : prevAuto,
       });
     } catch (e) { /* surfaced in Approvals queue regardless */ }
-  }
-  if (alertOwner) {
-    try {
-      await base44.integrations.Core.SendEmail({
-        to: agent.owner_email || APPROVER_EMAIL,
-        subject: `[Venus Shield] BLOCKED action & autonomy ratchet: ${agent.name}`,
-        body: `A governed action was blocked.\n\nAgent: ${agent.name} (${agent.agent_id})\nAction: ${action_type}\nTarget: ${target_system}\nAutonomy: ${prevAuto} → ${newAuto}\n\nThe agent's passport has been ratcheted to restricted.`,
-      });
-    } catch (e) { /* noop */ }
   }
 
   return {
     record,
     decision,
+    notification,
     agent: { ...agent, autonomy_level: downgrade ? "restricted" : agent.autonomy_level },
     blast_radius_score: decision === "blocked" ? 5 : blast,
     reversibility: decision === "blocked" ? "irreversible" : reversibility,

@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { VerdictBadge } from "@/components/VerdictBadge";
 import { DEMO_SCENARIOS, AUTONOMY_DEFINITIONS } from "@/lib/governance";
 import { evaluateAction } from "@/lib/governance";
-import { Zap, AlertTriangle, ShieldCheck, ScanSearch, Activity } from "lucide-react";
+import { Zap, AlertTriangle, ShieldCheck, ScanSearch, Activity, Mail } from "lucide-react";
 
 const REV_META = { reversible: { label: "Reversible", cls: "text-allow" }, partially_reversible: { label: "Partially Reversible", cls: "text-review" }, irreversible: { label: "Irreversible", cls: "text-blocked" } };
 
@@ -145,6 +145,11 @@ export default function EvaluateAction() {
                 {result.record.alert_owner && (
                   <div className="flex items-center gap-2 rounded-md bg-review/10 px-3 py-2 text-sm text-review">
                     <AlertTriangle className="h-4 w-4" /> Agent owner alerted.
+                  </div>
+                )}
+                {result.notification?.sent && (
+                  <div className="flex items-center gap-2 rounded-md bg-primary/10 px-3 py-2 text-sm text-primary">
+                    <Mail className="h-4 w-4" /> Security team notified by email.
                   </div>
                 )}
                 <div>
