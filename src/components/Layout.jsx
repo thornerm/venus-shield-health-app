@@ -2,7 +2,7 @@ import { NavLink, Outlet } from "react-router-dom";
 import { useState } from "react";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { Shield, Menu, LayoutDashboard, ShieldCheck, ScanSearch, ClipboardCheck, ScrollText, UserPlus, Scale, TrendingUp, Settings, FileDown } from "lucide-react";
+import { Shield, Menu, LayoutDashboard, ShieldCheck, ScanSearch, ClipboardCheck, ScrollText, UserPlus, Scale, TrendingUp, Settings, FileDown, Radio } from "lucide-react";
 import { APPROVER_NAME, APPROVER_EMAIL } from "@/lib/governance";
 
 const NAV = [
@@ -10,6 +10,7 @@ const NAV = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true },
   { to: "/passports", label: "Agent Passports", icon: ShieldCheck },
   { to: "/evaluate", label: "Evaluate Action", icon: ScanSearch },
+  { to: "/airtp", label: "AIRTP Session", icon: Radio },
   { to: "/approvals", label: "Approvals", icon: ClipboardCheck },
   { to: "/audit", label: "Audit Trail", icon: ScrollText },
   { to: "/policy-manager", label: "Policy Manager", icon: Scale },
