@@ -5,6 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import StatTile from "@/components/StatTile";
 import AutonomyBadge from "@/components/AutonomyBadge";
+import AutonomySecuritySummary from "@/components/AutonomySecuritySummary";
 import { RiskBadge } from "@/components/VerdictBadge";
 import { riskForAgent } from "@/lib/governance";
 import { Users, ClipboardCheck, Ban, AlertTriangle, RefreshCw } from "lucide-react";
@@ -52,6 +53,8 @@ export default function Dashboard() {
         <StatTile label="Blocked Actions" value={blockedCount} icon={Ban} tone="red" hint="passport violations" />
         <StatTile label="High-Risk Agents" value={highRisk} icon={AlertTriangle} tone="red" hint="require attention" />
       </div>
+
+      <AutonomySecuritySummary agents={agents} actions={actions} />
 
       <Card>
         <CardHeader>
