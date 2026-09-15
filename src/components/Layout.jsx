@@ -2,7 +2,7 @@ import { NavLink, Outlet } from "react-router-dom";
 import { useState } from "react";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { Shield, Menu, LayoutDashboard, ShieldCheck, ScanSearch, ClipboardCheck, ScrollText, UserPlus } from "lucide-react";
+import { Shield, Menu, LayoutDashboard, ShieldCheck, ScanSearch, ClipboardCheck, ScrollText, UserPlus, Scale, TrendingUp, Settings, FileDown } from "lucide-react";
 import { APPROVER_NAME, APPROVER_EMAIL } from "@/lib/governance";
 
 const NAV = [
@@ -12,6 +12,10 @@ const NAV = [
   { to: "/evaluate", label: "Evaluate Action", icon: ScanSearch },
   { to: "/approvals", label: "Approvals", icon: ClipboardCheck },
   { to: "/audit", label: "Audit Trail", icon: ScrollText },
+  { to: "/policy-manager", label: "Policy Manager", icon: Scale },
+  { to: "/agent-performance", label: "Agent Performance", icon: TrendingUp },
+  { to: "/report-export", label: "Report Export", icon: FileDown },
+  { to: "/account-settings", label: "Account Settings", icon: Settings },
 ];
 
 function Brand() {

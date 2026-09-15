@@ -14,6 +14,11 @@ import EvaluateAction from "@/pages/EvaluateAction";
 import Approvals from "@/pages/Approvals";
 import AuditTrail from "@/pages/AuditTrail";
 import RegisterAgent from "@/pages/RegisterAgent";
+import PolicyManager from "@/pages/PolicyManager";
+import PolicyDetails from "@/pages/PolicyDetails";
+import AgentPerformance from "@/pages/AgentPerformance";
+import AccountSettings from "@/pages/AccountSettings";
+import ReportExport from "@/pages/ReportExport";
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -48,6 +53,11 @@ const AuthenticatedApp = () => {
         <Route path="/approvals" element={<Approvals />} />
         <Route path="/audit" element={<AuditTrail />} />
         <Route path="/register" element={<RegisterAgent />} />
+        <Route path="/policy-manager" element={<PolicyManager />} />
+        <Route path="/policy-details/:id" element={<PolicyDetails />} />
+        <Route path="/agent-performance" element={<AgentPerformance />} />
+        <Route path="/account-settings" element={<AccountSettings />} />
+        <Route path="/report-export" element={<ReportExport />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>
