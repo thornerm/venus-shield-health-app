@@ -1,0 +1,144 @@
+{
+  "name": "JobExecution",
+  "type": "object",
+  "title": "Job Execution",
+  "description": "A run of a VenusAI job prompt through the orchestrator.",
+  "properties": {
+    "task_uid": {
+      "type": "string",
+      "title": "Task UID"
+    },
+    "customer_id": {
+      "type": "string",
+      "title": "Customer Config ID"
+    },
+    "customer_name": {
+      "type": "string",
+      "title": "Customer Name"
+    },
+    "job_prompt_id": {
+      "type": "string",
+      "title": "Job Prompt ID"
+    },
+    "job_prompt_name": {
+      "type": "string",
+      "title": "Job Prompt Name"
+    },
+    "task_owner": {
+      "type": "string",
+      "title": "Task Owner"
+    },
+    "agent_type": {
+      "type": "string",
+      "title": "Agent Type"
+    },
+    "task_instructions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "title": "Task Instructions",
+      "default": []
+    },
+    "prompt_snapshot": {
+      "type": "string",
+      "title": "Prompt Snapshot"
+    },
+    "secrets_used": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "title": "Secrets Used",
+      "default": []
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "queued",
+        "running",
+        "completed",
+        "failed"
+      ],
+      "title": "Status",
+      "default": "queued"
+    },
+    "ai_response": {
+      "type": "string",
+      "title": "AI Response"
+    },
+    "execution_trace": {
+      "type": "array",
+      "title": "Execution Trace",
+      "default": [],
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "step": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "detail": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      }
+    },
+    "orchestrator_run_id": {
+      "type": "string",
+      "title": "Orchestrator Run ID"
+    },
+    "started_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Started At"
+    },
+    "completed_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Completed At"
+    },
+    "error_message": {
+      "type": "string",
+      "title": "Error Message"
+    },
+    "is_sample": {
+      "type": "boolean",
+      "title": "Sample Data",
+      "default": false
+    }
+  },
+  "required": [
+    "task_uid",
+    "job_prompt_id",
+    "status"
+  ],
+  "rls": {
+    "create": null,
+    "read": null,
+    "update": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

@@ -1,0 +1,104 @@
+{
+  "name": "CustomerConfig",
+  "type": "object",
+  "title": "Customer Configuration",
+  "description": "A customer tenant configuration for VenusAI orchestration.",
+  "properties": {
+    "customer_name": {
+      "type": "string",
+      "title": "Customer Name"
+    },
+    "organization": {
+      "type": "string",
+      "title": "Organization"
+    },
+    "owner_email": {
+      "type": "string",
+      "format": "email",
+      "title": "Owner Email"
+    },
+    "github_org": {
+      "type": "string",
+      "title": "GitHub Organization"
+    },
+    "github_repo": {
+      "type": "string",
+      "title": "GitHub Repository"
+    },
+    "ai_agent_endpoint": {
+      "type": "string",
+      "title": "AI Agent Endpoint"
+    },
+    "ai_key_secret_name": {
+      "type": "string",
+      "title": "AI Key Secret Name",
+      "description": "Name of the app secret holding the AI agent API key.",
+      "default": "AI_AGENT_API_KEY"
+    },
+    "allowed_job_sources": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "title": "Allowed Job Sources",
+      "default": [
+        "venus_official",
+        "customer"
+      ]
+    },
+    "access_controls": {
+      "type": "object",
+      "title": "Access Controls",
+      "additionalProperties": true,
+      "default": {}
+    },
+    "is_active": {
+      "type": "boolean",
+      "title": "Active",
+      "default": true
+    },
+    "is_sample": {
+      "type": "boolean",
+      "title": "Sample Data",
+      "default": false
+    }
+  },
+  "required": [
+    "customer_name",
+    "ai_agent_endpoint"
+  ],
+  "rls": {
+    "create": null,
+    "read": null,
+    "update": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "data.owner_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "data.owner_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,126 @@
+{
+  "name": "JobPrompt",
+  "type": "object",
+  "title": "Job Prompt",
+  "description": "A pre-approved AI prompt job in the VenusAI orchestration catalog.",
+  "properties": {
+    "name": {
+      "type": "string",
+      "title": "Job Name"
+    },
+    "description": {
+      "type": "string",
+      "title": "Description"
+    },
+    "prompt_content": {
+      "type": "string",
+      "title": "Prompt Content"
+    },
+    "instructions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "title": "Task Instructions",
+      "default": []
+    },
+    "required_secrets": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "title": "Required Secrets",
+      "default": []
+    },
+    "source": {
+      "type": "string",
+      "enum": [
+        "venus_official",
+        "customer",
+        "shared_public"
+      ],
+      "title": "Source",
+      "default": "venus_official"
+    },
+    "category": {
+      "type": "string",
+      "title": "Category"
+    },
+    "agent_type": {
+      "type": "string",
+      "title": "Agent Type"
+    },
+    "owner_email": {
+      "type": "string",
+      "format": "email",
+      "title": "Owner Email"
+    },
+    "is_approved": {
+      "type": "boolean",
+      "title": "Approved",
+      "default": false
+    },
+    "orchestrator_workflow": {
+      "type": "string",
+      "title": "Orchestrator Workflow File",
+      "description": "GitHub Actions workflow file path (e.g. .github/workflows/analyze.yml)."
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "title": "Tags",
+      "default": []
+    },
+    "is_active": {
+      "type": "boolean",
+      "title": "Active",
+      "default": true
+    },
+    "is_sample": {
+      "type": "boolean",
+      "title": "Sample Data",
+      "default": false
+    }
+  },
+  "required": [
+    "name",
+    "prompt_content",
+    "source"
+  ],
+  "rls": {
+    "create": null,
+    "read": null,
+    "update": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "data.owner_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "data.owner_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
+}
