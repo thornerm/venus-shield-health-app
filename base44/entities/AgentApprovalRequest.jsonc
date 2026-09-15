@@ -13,6 +13,11 @@
       "title": "Request Type",
       "default": "new_agent"
     },
+    "request_uid": {
+      "type": "string",
+      "title": "Request UID",
+      "description": "Human-readable unique request identifier (e.g. REQ-2026-0007)."
+    },
     "agent_id": {
       "type": "string",
       "title": "Agent ID"
@@ -81,6 +86,87 @@
       },
       "title": "Data Permissions",
       "default": []
+    },
+    "environment": {
+      "type": "string",
+      "enum": [
+        "dev",
+        "staging",
+        "prod"
+      ],
+      "title": "Environment",
+      "default": "prod"
+    },
+    "deadline": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Decision Deadline"
+    },
+    "action_params": {
+      "type": "object",
+      "title": "Exact Parameters",
+      "additionalProperties": true,
+      "default": {}
+    },
+    "linked_evidence": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "title": "Linked Evidence",
+      "default": []
+    },
+    "scope_type": {
+      "type": "string",
+      "enum": [
+        "single_execution",
+        "ongoing_access"
+      ],
+      "title": "Approval Scope",
+      "default": "ongoing_access"
+    },
+    "approval_expires_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Approval Expiration"
+    },
+    "execution_consumed": {
+      "type": "boolean",
+      "title": "Execution Consumed",
+      "default": false
+    },
+    "executed_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Executed At"
+    },
+    "executed_action_id": {
+      "type": "string",
+      "title": "Executed Action Record ID"
+    },
+    "decision_history": {
+      "type": "array",
+      "title": "Decision History",
+      "default": [],
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "actor": {
+            "type": "string"
+          },
+          "action": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      }
     },
     "notes": {
       "type": "string",

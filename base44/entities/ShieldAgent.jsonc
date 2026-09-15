@@ -77,6 +77,105 @@
       "type": "boolean",
       "title": "Active",
       "default": true
+    },
+    "passport_version": {
+      "type": "integer",
+      "title": "Passport Version",
+      "default": 1
+    },
+    "review_status": {
+      "type": "string",
+      "enum": [
+        "pending_review",
+        "reviewed",
+        "needs_attention",
+        "expired"
+      ],
+      "title": "Review Status",
+      "default": "pending_review"
+    },
+    "runtime_health": {
+      "type": "string",
+      "enum": [
+        "healthy",
+        "degraded",
+        "offline",
+        "unknown"
+      ],
+      "title": "Runtime Health",
+      "default": "unknown"
+    },
+    "passport_expires_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Passport Expiration"
+    },
+    "grants": {
+      "type": "array",
+      "title": "Function Grants",
+      "default": [],
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "function": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          },
+          "environment": {
+            "type": "string"
+          },
+          "scope": {
+            "type": "string"
+          },
+          "constraints": {
+            "type": "string"
+          },
+          "effective_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      }
+    },
+    "version_history": {
+      "type": "array",
+      "title": "Version History",
+      "default": [],
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "version": {
+            "type": "integer"
+          },
+          "changed_by": {
+            "type": "string"
+          },
+          "changed_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "snapshot": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        }
+      }
+    },
+    "is_sample": {
+      "type": "boolean",
+      "title": "Sample Data",
+      "default": false
     }
   },
   "required": [
@@ -96,7 +195,7 @@
           "created_by_id": "{{user.id}}"
         },
         {
-          "data.owner_email": "{{user.email}}"
+          "data.owner_email": "{{user.email}"
         },
         {
           "user_condition": {

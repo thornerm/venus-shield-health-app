@@ -12,6 +12,11 @@
       "type": "string",
       "title": "Agent Name"
     },
+    "request_uid": {
+      "type": "string",
+      "title": "Request UID",
+      "description": "Unique request identifier distinguishing otherwise-similar actions."
+    },
     "action_type": {
       "type": "string",
       "title": "Action Type"
@@ -30,6 +35,88 @@
       "title": "Parameters",
       "additionalProperties": true,
       "default": {}
+    },
+    "environment": {
+      "type": "string",
+      "enum": [
+        "dev",
+        "staging",
+        "prod"
+      ],
+      "title": "Environment",
+      "default": "prod"
+    },
+    "deadline": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Decision Deadline"
+    },
+    "linked_evidence": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "title": "Linked Evidence",
+      "default": []
+    },
+    "scope_type": {
+      "type": "string",
+      "enum": [
+        "single_execution",
+        "ongoing_access"
+      ],
+      "title": "Approval Scope",
+      "default": "single_execution"
+    },
+    "approval_expires_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Approval Expiration"
+    },
+    "execution_consumed": {
+      "type": "boolean",
+      "title": "Execution Consumed",
+      "default": false
+    },
+    "executed_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Executed At"
+    },
+    "execution_outcome": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "succeeded",
+        "failed",
+        "unknown"
+      ],
+      "title": "Execution Outcome",
+      "default": "unknown"
+    },
+    "decision_history": {
+      "type": "array",
+      "title": "Decision History",
+      "default": [],
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "actor": {
+            "type": "string"
+          },
+          "action": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      }
     },
     "blast_radius_score": {
       "type": "integer",
