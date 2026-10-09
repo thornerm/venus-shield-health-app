@@ -2,7 +2,7 @@ import { NavLink, Outlet } from "react-router-dom";
 import { useState } from "react";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { Shield, Menu, LayoutDashboard, ShieldCheck, ScanSearch, ClipboardCheck, ScrollText, UserPlus, Scale, TrendingUp, Settings, FileDown, Radio } from "lucide-react";
+import { Shield, Menu, LayoutDashboard, ShieldCheck, ScanSearch, ClipboardCheck, ScrollText, UserPlus, Scale, TrendingUp, Settings, FileDown, Radio, Package, History, Settings2 } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import { roleLabel } from "@/lib/identity";
 
@@ -18,6 +18,12 @@ const NAV = [
   { to: "/agent-performance", label: "Agent Performance", icon: TrendingUp },
   { to: "/report-export", label: "Report Export", icon: FileDown },
   { to: "/account-settings", label: "Account Settings", icon: Settings },
+];
+
+const ORCH_NAV = [
+  { to: "/orchestration", label: "Prompt Catalog", icon: Package, end: true },
+  { to: "/orchestration/history", label: "Executions", icon: History },
+  { to: "/orchestration/setup", label: "Customer Setup", icon: Settings2 },
 ];
 
 function Brand() {
@@ -53,8 +59,16 @@ function NavItem({ to, label, icon: Icon, end }) {
 
 function NavList({ onNavigate }) {
   return (
-    <nav className="flex-1 space-y-1 p-3">
+    <nav className="flex-1 space-y-1 overflow-y-auto p-3">
       {NAV.map((item) => (
+        <div key={item.to} onClick={onNavigate}>
+          <NavItem {...item} />
+        </div>
+      ))}
+      <div className="px-3 pb-1 pt-4 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+        VenusAI Orchestration
+      </div>
+      {ORCH_NAV.map((item) => (
         <div key={item.to} onClick={onNavigate}>
           <NavItem {...item} />
         </div>

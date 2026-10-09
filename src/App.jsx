@@ -21,6 +21,11 @@ import AgentPerformance from "@/pages/AgentPerformance";
 import AccountSettings from "@/pages/AccountSettings";
 import ReportExport from "@/pages/ReportExport";
 import PassportDetail from "@/pages/PassportDetail";
+import PromptCatalog from "@/pages/orchestration/PromptCatalog";
+import PromptBuilder from "@/pages/orchestration/PromptBuilder";
+import CustomerSetup from "@/pages/orchestration/CustomerSetup";
+import JobRunner from "@/pages/orchestration/JobRunner";
+import ExecutionHistory from "@/pages/orchestration/ExecutionHistory";
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -62,6 +67,11 @@ const AuthenticatedApp = () => {
         <Route path="/agent-performance" element={<AgentPerformance />} />
         <Route path="/account-settings" element={<AccountSettings />} />
         <Route path="/report-export" element={<ReportExport />} />
+        <Route path="/orchestration" element={<PromptCatalog />} />
+        <Route path="/orchestration/create-prompt" element={<PromptBuilder />} />
+        <Route path="/orchestration/setup" element={<CustomerSetup />} />
+        <Route path="/orchestration/run/:id" element={<JobRunner />} />
+        <Route path="/orchestration/history" element={<ExecutionHistory />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>
