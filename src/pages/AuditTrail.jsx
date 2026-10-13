@@ -6,9 +6,14 @@ import { BlastRiskBadge, StatusBadge, VerdictBadge } from "@/components/VerdictB
 import PageHeader from "@/components/PageHeader";
 import Panel from "@/components/Panel";
 import FilterBar from "@/components/FilterBar";
+import SkeletonRows from "@/components/SkeletonRows";
+import AuditDetailRow from "@/components/audit/AuditDetailRow";
 import { verdictCounts, statusCounts, applyFilters, freshnessLabel, fmtDate, displayUid } from "@/lib/metrics";
 import { downloadCsv } from "@/lib/csv";
-import { Download, RefreshCw, ScrollText } from "lucide-react";
+import { ChevronDown, Download, RefreshCw, ScrollText } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+const COLUMNS = 14;
 
 function exportCsv(records) {
   const headers = ["Request UID", "Timestamp", "Agent", "Agent ID", "Action Type", "Target System", "Amount USD", "Blast Radius", "Reversibility", "Decision", "Status", "Environment", "Requested By", "Decisive Policy", "All Matched Policies", "Financial Limit Mode", "Decided By"];
@@ -35,6 +40,7 @@ export default function AuditTrail() {
   const [loading, setLoading] = useState(true);
   const [env, setEnv] = useState("all");
   const [range, setRange] = useState("all");
+  const [openId, setOpenId] = useState(null);
 
   const load = async () => {
     setLoading(true);
@@ -78,21 +84,22 @@ export default function AuditTrail() {
 
       <Panel
         title="Event Log"
-        description={`${f.length} recorded evaluation${f.length === 1 ? "" : "s"} · verdicts sum to ${v.total}. Newest first.`}
+        description={`${f.length} recorded evaluation${f.length === 1 ? "" : "s"} · verdicts sum to ${v.total}. Newest first. Expand any row for its reasoning trace and matched policies.`}
         icon={ScrollText}
         contentClassName="p-0"
       >
         {loading ? (
-          <div className="px-5 py-12 text-center text-sm text-muted-foreground">Loading audit trail…</div>
+          <SkeletonRows rows={8} />
         ) : f.length === 0 ? (
-          <div className="px-5 py-12 text-center text-sm text-muted-foreground">
-            {records.length === 0 ? "No actions evaluated yet." : "No records match the current filters."}
+          <div className="px-5 py-14 text-center text-sm text-muted-foreground">
+            {records.length === 0 ? "No actions have been evaluated yet." : "No records match the current filters."}
           </div>
         ) : (
           <div className="vs-scroll overflow-x-auto">
-            <Table className="min-w-[1100px]">
+            <Table className="min-w-[1200px]">
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-8" />
                   <TableHead>Request UID</TableHead>
                   <TableHead>Timestamp</TableHead>
                   <TableHead>Agent</TableHead>
@@ -101,6 +108,7 @@ export default function AuditTrail() {
                   <TableHead>Env</TableHead>
                   <TableHead className="text-right">Amount</TableHead>
                   <TableHead>Severity</TableHead>
+                  <TableHead>Policy</TableHead>
                   <TableHead>Decision</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Requested By</TableHead>
@@ -108,28 +116,48 @@ export default function AuditTrail() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {f.map((r) => (
-                  <TableRow key={r.id} className="transition-colors duration-200 hover:bg-surface/40">
-                    <TableCell className="font-mono text-xs text-muted-foreground">{displayUid(r, "ACT")}</TableCell>
-                    <TableCell className="whitespace-nowrap text-xs text-muted-foreground">{fmtDate(r.created_date)}</TableCell>
-                    <TableCell>
-                      <div className="text-[13px] font-medium text-foreground">{r.agent_name}</div>
-                      <div className="font-mono text-[10px] text-muted-foreground">{r.agent_id}</div>
-                    </TableCell>
-                    <TableCell className="font-mono text-xs text-foreground">{r.action_type}</TableCell>
-                    <TableCell className="text-xs text-muted-foreground">{r.target_system}</TableCell>
-                    <TableCell className="font-mono text-xs uppercase text-muted-foreground">{r.environment || "prod"}</TableCell>
-                    <TableCell className="text-right text-xs tabular-nums text-muted-foreground">${Number(r.amount_usd || 0).toLocaleString()}</TableCell>
-                    <TableCell>
-                      <BlastRiskBadge score={r.blast_radius_score} />
-                      <div className="mt-1 text-[10px] text-muted-foreground">{r.blast_radius_score ?? "—"}/5 · {r.reversibility}</div>
-                    </TableCell>
-                    <TableCell><VerdictBadge decision={r.decision} /></TableCell>
-                    <TableCell><StatusBadge status={r.status} /></TableCell>
-                    <TableCell className="max-w-[140px] truncate text-xs text-muted-foreground" title={r.requested_by || ""}>{r.requested_by || "—"}</TableCell>
-                    <TableCell className="max-w-[140px] truncate text-xs text-muted-foreground" title={r.decided_by || ""}>{r.decided_by || "—"}</TableCell>
-                  </TableRow>
-                ))}
+                {f.flatMap((r) => {
+                  const open = openId === r.id;
+                  const rows = [
+                    <TableRow key={r.id} className="transition-colors duration-200 hover:bg-surface/40">
+                        <TableCell className="pr-0">
+                          <button
+                            type="button"
+                            onClick={() => setOpenId(open ? null : r.id)}
+                            aria-expanded={open}
+                            aria-label={`${open ? "Hide" : "Show"} evidence for ${displayUid(r, "ACT")}`}
+                            className="inline-flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground transition-colors duration-200 hover:bg-accent hover:text-foreground"
+                          >
+                            <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", open && "rotate-180")} />
+                          </button>
+                        </TableCell>
+                        <TableCell className="font-mono text-xs text-muted-foreground">{displayUid(r, "ACT")}</TableCell>
+                        <TableCell className="whitespace-nowrap text-xs text-muted-foreground">{fmtDate(r.created_date)}</TableCell>
+                        <TableCell>
+                          <div className="text-[13px] font-medium text-foreground">{r.agent_name}</div>
+                          <div className="font-mono text-[10px] text-muted-foreground">{r.agent_id}</div>
+                        </TableCell>
+                        <TableCell className="font-mono text-xs text-foreground">{r.action_type}</TableCell>
+                        <TableCell className="text-xs text-muted-foreground">{r.target_system}</TableCell>
+                        <TableCell className="font-mono text-xs uppercase text-muted-foreground">{r.environment || "prod"}</TableCell>
+                        <TableCell className="text-right text-xs tabular-nums text-muted-foreground">${Number(r.amount_usd || 0).toLocaleString()}</TableCell>
+                        <TableCell>
+                          <BlastRiskBadge score={r.blast_radius_score} />
+                          <div className="mt-1 text-[10px] text-muted-foreground">{r.blast_radius_score ?? "—"}/5 · {r.reversibility}</div>
+                        </TableCell>
+                        <TableCell className="max-w-[180px] truncate text-xs text-muted-foreground" title={r.policy_matched_name || ""}>
+                          {r.policy_matched_name || <span className="text-muted-foreground/70">No policy</span>}
+                        </TableCell>
+                        <TableCell><VerdictBadge decision={r.decision} /></TableCell>
+                        <TableCell><StatusBadge status={r.status} /></TableCell>
+                        <TableCell className="max-w-[140px] truncate text-xs text-muted-foreground" title={r.requested_by || ""}>{r.requested_by || "—"}</TableCell>
+                        <TableCell className="max-w-[140px] truncate text-xs text-muted-foreground" title={r.decided_by || ""}>{r.decided_by || "—"}</TableCell>
+                    </TableRow>,
+                  ];
+
+                  if (open) rows.push(<AuditDetailRow key={`${r.id}-evidence`} record={r} colSpan={COLUMNS} />);
+                  return rows;
+                })}
               </TableBody>
             </Table>
           </div>

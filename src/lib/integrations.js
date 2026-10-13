@@ -29,6 +29,10 @@ const SYSTEM_DESCRIPTIONS = {
   governance: "Venus Shield passport and policy services.",
   external_endpoint: "Third-party HTTP endpoints and webhooks.",
   audit_trail: "Immutable governance event history.",
+  github: "Source control and deployment pipelines.",
+  slack: "Team messaging and channel notifications.",
+  salesforce: "Customer relationship platform.",
+  stripe: "Online payment processing.",
 };
 
 export function systemKey(raw) {
@@ -43,6 +47,74 @@ export function systemLabel(key) {
 
 export function systemDescription(key) {
   return SYSTEM_DESCRIPTIONS[key] || "Connected system.";
+}
+
+// ---------------------------------------------------------------------------
+// Categories — a presentation grouping over the systems already on record.
+// ---------------------------------------------------------------------------
+
+const SYSTEM_CATEGORIES = {
+  billing: "Payments",
+  stripe: "Payments",
+  crm: "Customer Data",
+  helpdesk: "Customer Data",
+  salesforce: "Customer Data",
+  email: "Messaging",
+  slack: "Messaging",
+  linkedin: "Publishing",
+  internal_kb: "Knowledge",
+  governance: "Platform Services",
+  audit_trail: "Platform Services",
+  external_endpoint: "Infrastructure",
+  github: "Infrastructure",
+};
+
+export function systemCategory(key) {
+  return SYSTEM_CATEGORIES[key] || "Other";
+}
+
+// ---------------------------------------------------------------------------
+// Connection status. Every state is evidence from recorded governance data —
+// nothing is probed from a provider API and no state is simulated.
+//   connected  green  a governed action has been recorded against it
+//   attention  amber  actions were blocked there, or it carries traffic while
+//                     no active policy names it
+//   error      red    at least one recorded execution against it failed
+//   idle       gray   wired into a passport or policy but never acted on yet
+// ---------------------------------------------------------------------------
+
+export const INTEGRATION_STATUS = {
+  connected: {
+    label: "Connected",
+    cls: "border-allow/30 bg-allow/10 text-allow",
+    dot: "bg-allow",
+    hint: "Governed activity recorded",
+  },
+  attention: {
+    label: "Attention required",
+    cls: "border-review/30 bg-review/10 text-review",
+    dot: "bg-review",
+    hint: "Blocked activity or no policy coverage",
+  },
+  error: {
+    label: "Failed operations",
+    cls: "border-blocked/30 bg-blocked/10 text-blocked",
+    dot: "bg-blocked",
+    hint: "A recorded execution failed here",
+  },
+  idle: {
+    label: "No activity",
+    cls: "border-border bg-surface/60 text-muted-foreground",
+    dot: "bg-muted-foreground",
+    hint: "No activity recorded yet",
+  },
+};
+
+export function integrationStatus(s) {
+  if (s.failed > 0) return "error";
+  if (s.blocked > 0) return "attention";
+  if (s.total > 0) return "connected";
+  return "idle";
 }
 
 /** Every system name an active policy claims to govern. */
@@ -74,7 +146,10 @@ export function deriveSystems({ agents = [], actions = [], policies = [] } = {})
         review: 0,
         blocked: 0,
         maxBlast: 0,
+        failed: 0,
+        succeeded: 0,
         lastActivity: null,
+        lastSuccess: null,
       });
     }
     return map.get(key);
@@ -113,6 +188,12 @@ export function deriveSystems({ agents = [], actions = [], policies = [] } = {})
     if (!isNaN(t) && (s.lastActivity == null || t > s.lastActivity)) s.lastActivity = t;
     const blast = Number(a.blast_radius_score) || 0;
     if (blast > s.maxBlast) s.maxBlast = blast;
+    if (a.execution_outcome === "failed") s.failed++;
+    if (a.execution_outcome === "succeeded") {
+      s.succeeded++;
+      const done = new Date(a.executed_at || a.created_date || 0).getTime();
+      if (!isNaN(done) && (s.lastSuccess == null || done > s.lastSuccess)) s.lastSuccess = done;
+    }
   }
 
   return [...map.values()]
@@ -130,8 +211,13 @@ export function deriveSystems({ agents = [], actions = [], policies = [] } = {})
       review: s.review,
       blocked: s.blocked,
       maxBlast: s.maxBlast,
+      failed: s.failed,
+      succeeded: s.succeeded,
+      category: systemCategory(s.key),
+      status: integrationStatus(s),
       hasActivity: s.total > 0,
       lastActivityIso: s.lastActivity ? new Date(s.lastActivity).toISOString() : null,
+      lastSuccessIso: s.lastSuccess ? new Date(s.lastSuccess).toISOString() : null,
       operations: Object.entries(s.operations)
         .map(([name, count]) => ({ name, count }))
         .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name)),

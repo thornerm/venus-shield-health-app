@@ -51,6 +51,8 @@
     --review-foreground: 216 52% 6%;
     --blocked: 0 84% 60%;               /* #EF4444 blocked */
     --blocked-foreground: 0 0% 100%;
+    --high: 22 92% 50%;                 /* #F97316 orange-red — high severity */
+    --high-foreground: 216 52% 6%;
     --info: 217 91% 60%;                /* #3B82F6 accent blue */
     --info-foreground: 0 0% 100%;
 
@@ -112,6 +114,8 @@
     --review-foreground: 216 52% 6%;
     --blocked: 0 84% 60%;
     --blocked-foreground: 0 0% 100%;
+    --high: 22 92% 50%;
+    --high-foreground: 216 52% 6%;
     --info: 217 91% 60%;
     --info-foreground: 0 0% 100%;
     --sidebar-background: 215 55% 9%;

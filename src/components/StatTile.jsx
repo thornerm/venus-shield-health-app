@@ -4,6 +4,7 @@ const TONE = {
   default: { icon: "text-muted-foreground", value: "text-foreground", ring: "bg-muted" },
   blue: { icon: "text-info", value: "text-foreground", ring: "bg-info/10" },
   amber: { icon: "text-review", value: "text-review", ring: "bg-review/10" },
+  high: { icon: "text-high", value: "text-high", ring: "bg-high/10" },
   red: { icon: "text-blocked", value: "text-blocked", ring: "bg-blocked/10" },
   green: { icon: "text-allow", value: "text-allow", ring: "bg-allow/10" },
 };

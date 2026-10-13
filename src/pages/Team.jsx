@@ -7,6 +7,7 @@ import StatTile from "@/components/StatTile";
 import MemberTable from "@/components/team/MemberTable";
 import InviteMemberDialog from "@/components/team/InviteMemberDialog";
 import UnlinkedIdentitiesPanel from "@/components/team/UnlinkedIdentitiesPanel";
+import SkeletonRows from "@/components/SkeletonRows";
 import { deriveTeam } from "@/lib/team";
 import { getCurrentActor, roleLabel } from "@/lib/identity";
 import { Users, ShieldCheck, ClipboardCheck, AlertTriangle, UserPlus, RefreshCw, CheckCircle2 } from "lucide-react";
@@ -67,7 +68,7 @@ export default function Team() {
     <div className="space-y-6">
       <PageHeader
         title="Team"
-        subtitle="Who operates this governance console, what role they hold, and the decision record behind each member."
+        subtitle="Manage organizational access and responsibilities."
         actions={
           <>
             <Button size="sm" onClick={() => openInvite()}>
@@ -95,12 +96,12 @@ export default function Team() {
 
       <Panel
         title="Team Roster"
-        description="Decisions counts every approval or refusal recorded against that member's identity in the audit records."
+        description="Decisions counts every approval or refusal recorded against that member's identity in the audit records, and Last Active reflects their most recent recorded decision."
         icon={Users}
         contentClassName="p-0"
       >
         {loading ? (
-          <div className="px-5 py-12 text-center text-sm text-muted-foreground">Loading team…</div>
+          <SkeletonRows rows={5} />
         ) : (
           <MemberTable members={members} savingId={savingId} onRoleChange={changeRole} />
         )}

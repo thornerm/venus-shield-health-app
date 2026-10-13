@@ -17,7 +17,7 @@ const GROUPS = [
       { to: "/approvals", label: "Action Review", icon: ClipboardCheck },
       { to: "/policy-manager", label: "Policies", icon: Scale },
       { to: "/integrations", label: "Integrations", icon: Plug },
-      { to: "/alerts", label: "Alerts", icon: Bell },
+      { to: "/alerts", label: "Risks & Alerts", icon: Bell },
     ],
   },
   {
