@@ -10,7 +10,11 @@ import SystemCard from "@/components/integrations/SystemCard";
 import ConnectAgentCard from "@/components/integrations/ConnectAgentCard";
 import SkeletonCards from "@/components/SkeletonCards";
 import SkeletonRows from "@/components/SkeletonRows";
-import { deriveSystems } from "@/lib/integrations";
+import { deriveSystems, systemKey } from "@/lib/integrations";
+
+// Runtime evaluations are everything an agent asked for itself — not the sandbox.
+const RUNTIME_WINDOW_MS = 24 * 60 * 60 * 1000;
+const RUNTIME_SOURCES = ["runtime", "airtp", "mcp-proxy", "sdk", "orchestrator"];
 import { Search, RefreshCw, Plug, Link2, Scale, Ban, LayoutGrid, List } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -28,6 +32,7 @@ export default function Integrations() {
   const [agents, setAgents] = useState([]);
   const [actions, setActions] = useState([]);
   const [policies, setPolicies] = useState([]);
+  const [runtimeCounts, setRuntimeCounts] = useState({});
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
   const [tab, setTab] = useState("all");
@@ -36,19 +41,29 @@ export default function Integrations() {
 
   const load = async () => {
     setLoading(true);
-    const [ag, ar, po] = await Promise.all([
+    const since = new Date(Date.now() - RUNTIME_WINDOW_MS).toISOString();
+    const [ag, ar, po, rt] = await Promise.all([
       base44.entities.ShieldAgent.list(),
       base44.entities.ActionRecord.list("-created_date", 500),
       base44.entities.ShieldPolicy.list(),
+      // Runtime traffic is counted by the server, not derived from the loaded page.
+      base44.entities.ActionRecord.aggregate({
+        query: { created_date: { $gte: since }, source: { $in: RUNTIME_SOURCES } },
+        groupBy: "target_system",
+      }),
     ]);
     setAgents(ag || []);
     setActions(ar || []);
     setPolicies(po || []);
+    setRuntimeCounts(Object.fromEntries((rt?.rows || []).map((r) => [systemKey(r.target_system), r.count])));
     setLoading(false);
   };
   useEffect(() => { load(); }, []);
 
-  const systems = useMemo(() => deriveSystems({ agents, actions, policies }), [agents, actions, policies]);
+  const systems = useMemo(
+    () => deriveSystems({ agents, actions, policies, runtimeCounts }),
+    [agents, actions, policies, runtimeCounts]
+  );
 
   const totals = useMemo(() => ({
     systems: systems.length,

@@ -12,7 +12,7 @@ import { createClientFromRequest } from "npm:@base44/sdk@0.8.52";
 import { evaluateGovernance, buildActionRecordPayload, rows } from "../../shared/engine.ts";
 
 // Only paths that legitimately originate in this app may label a record.
-const SOURCES = ["ui", "airtp"];
+const SOURCES = ["ui", "airtp", "orchestrator"];
 
 export default async function (req) {
   try {

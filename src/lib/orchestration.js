@@ -68,9 +68,20 @@ export function buildFullPrompt(prompt) {
   return full;
 }
 
-export function buildInitialTrace(prompt, customerConfig) {
+export function buildInitialTrace(prompt, customerConfig, verdict = null) {
   const secrets = prompt.required_secrets || [];
   return [
+    ...(verdict
+      ? [
+          buildTraceStep(
+            "governance_verdict",
+            "completed",
+            `Verdict "${verdict.decision}" from the shared engine for passport ${
+              verdict.record?.agent_name || verdict.agent?.name || "—"
+            }: ${verdict.reason || ""}`
+          ),
+        ]
+      : []),
     buildTraceStep(
       "resolve_customer",
       "completed",
@@ -101,4 +112,23 @@ export function formatStepLabel(step) {
     .split("_")
     .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
     .join(" ");
+}
+
+/**
+ * The passport that governs a job dispatch. A job prompt names the agent it runs
+ * as (`agent_type`); that name must resolve to an approved passport before the
+ * dispatch can be evaluated. No passport means no permission to dispatch.
+ */
+export function resolveDispatchPassport(prompt, agents = []) {
+  const type = String(prompt?.agent_type || "").trim().toLowerCase();
+  if (!type) return null;
+  const base = type.replace(/-agent$/, "");
+  const pool = agents.filter((a) => a.is_active);
+  const matches = (a) => `${a.name || ""} ${a.agent_id || ""}`.toLowerCase();
+  return (
+    pool.find((a) => String(a.agent_id || "").toLowerCase() === type) ||
+    pool.find((a) => matches(a).includes(type)) ||
+    pool.find((a) => base.length >= 3 && matches(a).includes(base)) ||
+    null
+  );
 }

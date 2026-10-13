@@ -5,7 +5,7 @@ import { ageLabel } from "@/lib/metrics";
 import { cn } from "@/lib/utils";
 import {
   BookOpen, Clock, CreditCard, Github, Globe, Headphones, Landmark, Linkedin,
-  Mail, MessageSquare, Scale, ScrollText, Server, Settings2, ShieldCheck, Ban,
+  Mail, MessageSquare, Scale, ScrollText, Server, Settings2, ShieldCheck, Ban, Zap,
 } from "lucide-react";
 
 const CHIP = "inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] font-semibold";
@@ -84,6 +84,11 @@ export default function SystemCard({ system }) {
         </Line>
         <Line icon={Clock}>
           {system.lastActivityIso ? `Last activity ${ageLabel(system.lastActivityIso)}` : "No activity recorded yet"}
+        </Line>
+        <Line icon={Zap} tone={system.runtime24h > 0 ? "text-primary" : "text-muted-foreground"}>
+          {system.runtime24h > 0
+            ? `${system.runtime24h} runtime evaluation${system.runtime24h === 1 ? "" : "s"} in the last 24h`
+            : "No runtime evaluations in the last 24h"}
         </Line>
         <Line icon={Scale} tone={system.policies.length === 0 && system.total > 0 ? "text-review" : "text-muted-foreground"}>
           {system.policies.length > 0

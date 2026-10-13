@@ -124,7 +124,7 @@ export function policySystemKeys(policy) {
   return raw.map(systemKey).filter(Boolean);
 }
 
-export function deriveSystems({ agents = [], actions = [], policies = [] } = {}) {
+export function deriveSystems({ agents = [], actions = [], policies = [], runtimeCounts = {} } = {}) {
   const map = new Map();
 
   const ensure = (raw) => {
@@ -196,6 +196,10 @@ export function deriveSystems({ agents = [], actions = [], policies = [] } = {})
     }
   }
 
+  // A system with runtime traffic in the window must appear even when the
+  // loaded activity page does not reach back far enough to contain it.
+  for (const key of Object.keys(runtimeCounts)) ensure(key);
+
   return [...map.values()]
     .map((s) => ({
       key: s.key,
@@ -216,6 +220,7 @@ export function deriveSystems({ agents = [], actions = [], policies = [] } = {})
       category: systemCategory(s.key),
       status: integrationStatus(s),
       hasActivity: s.total > 0,
+      runtime24h: Number(runtimeCounts[s.key] || 0),
       lastActivityIso: s.lastActivity ? new Date(s.lastActivity).toISOString() : null,
       lastSuccessIso: s.lastSuccess ? new Date(s.lastSuccess).toISOString() : null,
       operations: Object.entries(s.operations)

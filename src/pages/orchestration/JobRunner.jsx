@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useParams, Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Play, Lock, Cpu, Workflow, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Play, Lock, Cpu, Workflow, AlertTriangle, ShieldCheck } from "lucide-react";
 import SourceBadge from "@/components/orchestration/SourceBadge";
 import ExecStatusBadge from "@/components/orchestration/ExecStatusBadge";
 import ExecutionTrace from "@/components/orchestration/ExecutionTrace";
@@ -12,8 +12,11 @@ import {
   buildTraceStep,
   buildInitialTrace,
   buildFullPrompt,
+  resolveDispatchPassport,
 } from "@/lib/orchestration";
 import { getCurrentActor } from "@/lib/identity";
+import { evaluateAction } from "@/lib/governance";
+import GovernanceVerdictCard from "@/components/airtp/GovernanceVerdictCard";
 
 export default function JobRunner() {
   const { id } = useParams();
@@ -23,18 +26,25 @@ export default function JobRunner() {
   const [error, setError] = useState(null);
   const [executing, setExecuting] = useState(false);
   const [execution, setExecution] = useState(null);
+  const [agents, setAgents] = useState([]);
+  const [verdict, setVerdict] = useState(null);
 
   useEffect(() => {
     load();
   }, [id]);
 
+  // The passport that governs this dispatch — resolved before anything runs.
+  const governingPassport = useMemo(() => resolveDispatchPassport(prompt, agents), [prompt, agents]);
+
   async function load() {
     try {
-      const [p, actor] = await Promise.all([
+      const [p, actor, passports] = await Promise.all([
         base44.entities.JobPrompt.get(id),
         getCurrentActor(),
+        base44.entities.ShieldAgent.filter({ is_active: true }),
       ]);
       setPrompt(p);
+      setAgents(passports || []);
       const configs = await base44.entities.CustomerConfig.filter(
         { owner_email: actor.email },
         "-created_date",
@@ -49,6 +59,13 @@ export default function JobRunner() {
   }
 
   async function runJob() {
+    if (!governingPassport) {
+      setError(
+        `No approved passport matches this job's agent type (${prompt.agent_type || "unset"}). Register that agent first — a dispatch without a passport has no permission to run.`
+      );
+      return;
+    }
+    setVerdict(null);
     setExecuting(true);
     setError(null);
     setExecution(null);
@@ -58,6 +75,34 @@ export default function JobRunner() {
 
     let exec;
     try {
+      // Governance first: the dispatch is judged by the one shared engine, and the
+      // verdict is recorded in the audit trail before any work leaves the console.
+      const result = await evaluateAction({
+        agent_id: governingPassport.agent_id,
+        action_type: "dispatch_job",
+        target_system: "external_endpoint",
+        amount_usd: 0,
+        params: {
+          task_uid: taskUid,
+          job_prompt_id: prompt.id,
+          job_prompt_name: prompt.name,
+          agent_type: prompt.agent_type || "",
+          workflow: prompt.orchestrator_workflow || "",
+          customer: customerConfig?.customer_name || "default tenant",
+          endpoint: customerConfig?.ai_agent_endpoint || null,
+        },
+        actor,
+        source: "orchestrator",
+      });
+      setVerdict(result);
+      if (result.error) throw new Error(result.error);
+      if (result.decision === "blocked") {
+        throw new Error(`Blocked by governance — nothing was dispatched. ${result.reason || ""}`.trim());
+      }
+      if (result.decision === "approval_required") {
+        throw new Error("Held for human approval — review it in Action Review, then run the job again.");
+      }
+
       exec = await base44.entities.JobExecution.create({
         task_uid: taskUid,
         customer_id: customerConfig?.id || "",
@@ -71,7 +116,7 @@ export default function JobRunner() {
         secrets_used: prompt.required_secrets || [],
         status: "running",
         started_at: startedAt,
-        execution_trace: buildInitialTrace(prompt, customerConfig),
+        execution_trace: buildInitialTrace(prompt, customerConfig, result),
       });
       setExecution(exec);
 
@@ -179,6 +224,20 @@ export default function JobRunner() {
               )}
             </div>
             <div className="border-t border-border pt-3">
+              <p className="mb-1 text-xs uppercase tracking-wide text-muted-foreground">Governing passport</p>
+              {governingPassport ? (
+                <p className="flex items-center gap-1.5 font-medium">
+                  <ShieldCheck className="h-3.5 w-3.5 text-allow" /> {governingPassport.name}
+                </p>
+              ) : (
+                <p className="flex items-center gap-1.5 text-xs text-review">
+                  <AlertTriangle className="h-3.5 w-3.5" /> No passport matches “{prompt.agent_type || "unset"}” —{" "}
+                  <Link to="/register" className="underline">register the agent</Link>
+                </p>
+              )}
+            </div>
+
+            <div className="border-t border-border pt-3">
               <p className="mb-1 text-xs uppercase tracking-wide text-muted-foreground">Customer</p>
               {customerConfig ? (
                 <>
@@ -207,6 +266,16 @@ export default function JobRunner() {
       {error && prompt && (
         <p className="flex items-center gap-1.5 text-sm text-blocked">
           <AlertTriangle className="h-4 w-4" /> {error}
+        </p>
+      )}
+
+      {verdict && !verdict.error && <GovernanceVerdictCard result={verdict} />}
+
+      {verdict && !verdict.error && (
+        <p className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+          <ShieldCheck className="h-3.5 w-3.5 text-primary" /> Recorded in the{" "}
+          <Link to="/audit" className="underline">audit trail</Link> as an orchestrator dispatch by{" "}
+          {verdict.record?.requested_by || "you"}.
         </p>
       )}
 
