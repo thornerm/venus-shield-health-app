@@ -13,12 +13,12 @@ import { downloadCsv } from "@/lib/csv";
 import { ChevronDown, Download, RefreshCw, ScrollText } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const COLUMNS = 14;
+const COLUMNS = 15;
 
 function exportCsv(records) {
-  const headers = ["Request UID", "Timestamp", "Agent", "Agent ID", "Action Type", "Target System", "Amount USD", "Blast Radius", "Reversibility", "Decision", "Status", "Environment", "Requested By", "Decisive Policy", "All Matched Policies", "Financial Limit Mode", "Decided By"];
+  const headers = ["Request UID", "Timestamp", "Agent", "Agent ID", "Action Type", "Target System", "Amount USD", "Blast Radius", "Reversibility", "Decision", "Status", "Source", "Environment", "Requested By", "Decisive Policy", "All Matched Policies", "Financial Limit Mode", "Decided By"];
   const rows = records.map((r) => [
-    displayUid(r, "ACT"), r.created_date, r.agent_name, r.agent_id, r.action_type, r.target_system, r.amount_usd, r.blast_radius_score, r.reversibility, r.decision, r.status, r.environment || "prod",
+    displayUid(r, "ACT"), r.created_date, r.agent_name, r.agent_id, r.action_type, r.target_system, r.amount_usd, r.blast_radius_score, r.reversibility, r.decision, r.status, r.source || "ui", r.environment || "prod",
     r.requested_by || "", r.policy_matched_name || "", (r.policy_matches || []).map((m) => `${m.name}(${m.required_decision})`).join(" | "), r.financial_limit_mode || "", r.decided_by || "",
   ]);
   downloadCsv("venus-shield-audit-trail.csv", headers, rows);
@@ -40,6 +40,7 @@ export default function AuditTrail() {
   const [loading, setLoading] = useState(true);
   const [env, setEnv] = useState("all");
   const [range, setRange] = useState("all");
+  const [source, setSource] = useState("all");
   const [openId, setOpenId] = useState(null);
 
   const load = async () => {
@@ -50,7 +51,12 @@ export default function AuditTrail() {
   };
   useEffect(() => { load(); }, []);
 
-  const f = useMemo(() => applyFilters(records, { env, range }), [records, env, range]);
+  const f = useMemo(() => {
+    const base = applyFilters(records, { env, range });
+    if (source === "all") return base;
+    if (source === "runtime") return base.filter((r) => r.source && r.source !== "ui");
+    return base.filter((r) => !r.source || r.source === "ui");
+  }, [records, env, range, source]);
   const v = useMemo(() => verdictCounts(f), [f]);
   const s = useMemo(() => statusCounts(f), [f]);
   const freshness = freshnessLabel(f);
@@ -87,6 +93,21 @@ export default function AuditTrail() {
         description={`${f.length} recorded evaluation${f.length === 1 ? "" : "s"} · verdicts sum to ${v.total}. Newest first. Expand any row for its reasoning trace and matched policies.`}
         icon={ScrollText}
         contentClassName="p-0"
+        action={
+          <div className="flex items-center gap-2">
+            <label htmlFor="source-filter" className="vs-eyebrow">Source</label>
+            <select
+              id="source-filter"
+              value={source}
+              onChange={(e) => setSource(e.target.value)}
+              className="h-8 rounded-md border border-input bg-transparent px-2 text-xs text-foreground transition-colors duration-200 focus-visible:border-primary/60 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            >
+              <option value="all">All sources</option>
+              <option value="runtime">Runtime only</option>
+              <option value="ui">Human console (UI)</option>
+            </select>
+          </div>
+        }
       >
         {loading ? (
           <SkeletonRows rows={8} />
@@ -96,7 +117,7 @@ export default function AuditTrail() {
           </div>
         ) : (
           <div className="vs-scroll overflow-x-auto">
-            <Table className="min-w-[1200px]">
+            <Table className="min-w-[1320px]">
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-8" />
@@ -111,6 +132,7 @@ export default function AuditTrail() {
                   <TableHead>Policy</TableHead>
                   <TableHead>Decision</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>Source</TableHead>
                   <TableHead>Requested By</TableHead>
                   <TableHead>Decided By</TableHead>
                 </TableRow>
@@ -150,6 +172,15 @@ export default function AuditTrail() {
                         </TableCell>
                         <TableCell><VerdictBadge decision={r.decision} /></TableCell>
                         <TableCell><StatusBadge status={r.status} /></TableCell>
+                        <TableCell>
+                          {r.source && r.source !== "ui" ? (
+                            <span className="inline-flex rounded-full bg-info/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-info" title={`source: ${r.source}`}>
+                              {r.source === "mcp-proxy" || r.source === "sdk" || r.source === "runtime" ? "Runtime" : r.source}
+                            </span>
+                          ) : (
+                            <span className="text-[10px] uppercase tracking-wider text-muted-foreground">UI</span>
+                          )}
+                        </TableCell>
                         <TableCell className="max-w-[140px] truncate text-xs text-muted-foreground" title={r.requested_by || ""}>{r.requested_by || "—"}</TableCell>
                         <TableCell className="max-w-[140px] truncate text-xs text-muted-foreground" title={r.decided_by || ""}>{r.decided_by || "—"}</TableCell>
                     </TableRow>,

@@ -7,6 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { VerdictBadge, StatusBadge } from "@/components/VerdictBadge";
 import AutonomyBadge from "@/components/AutonomyBadge";
 import { revokeAgent, renewAgent, FINANCIAL_LIMIT_MODES } from "@/lib/governance";
+import RuntimeAccessCard from "@/components/passport/RuntimeAccessCard";
 import { useAuth } from "@/lib/AuthContext";
 import { fmtDate, ageLabel } from "@/lib/metrics";
 import { ArrowLeft, ShieldCheck, History, KeyRound, Activity, Clock, Link2, Ban, RefreshCw, AlertTriangle } from "lucide-react";
@@ -147,6 +148,8 @@ export default function PassportDetail() {
           </CardContent>
         </Card>
       )}
+
+      {isAdmin && <RuntimeAccessCard agent={agent} isAdmin={isAdmin} />}
 
       <Card>
         <CardHeader><CardTitle className="flex items-center gap-2 text-base"><KeyRound className="h-4 w-4 text-primary" /> Function Grants</CardTitle><CardDescription>Versioned function-level authorizations.</CardDescription></CardHeader>

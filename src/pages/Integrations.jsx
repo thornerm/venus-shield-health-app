@@ -7,6 +7,7 @@ import StatTile from "@/components/StatTile";
 import TabBar from "@/components/TabBar";
 import SystemTable from "@/components/integrations/SystemTable";
 import SystemCard from "@/components/integrations/SystemCard";
+import ConnectAgentCard from "@/components/integrations/ConnectAgentCard";
 import SkeletonCards from "@/components/SkeletonCards";
 import SkeletonRows from "@/components/SkeletonRows";
 import { deriveSystems } from "@/lib/integrations";
@@ -187,6 +188,8 @@ export default function Integrations() {
           <SystemTable rows={rows} loading={false} />
         )}
       </Panel>
+
+      <ConnectAgentCard />
     </div>
   );
 }

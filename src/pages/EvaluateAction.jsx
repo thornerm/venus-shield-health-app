@@ -52,7 +52,7 @@ export default function EvaluateAction() {
     setLoading(true);
     try {
       const actor = await getCurrentActor();
-      const res = await evaluateAction({ agent_id: agentId, action_type: actionType, target_system: targetSystem, amount_usd: Number(amount) || 0, params, actor });
+      const res = await evaluateAction({ agent_id: agentId, action_type: actionType, target_system: targetSystem, amount_usd: Number(amount) || 0, params, actor, source: "ui" });
       if (res.error) { setError(res.error); }
       else { setResult(res); }
     } catch (e) { setError(e?.message || "Evaluation failed."); }
@@ -88,7 +88,8 @@ export default function EvaluateAction() {
 
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base"><ScanSearch className="h-4 w-4 text-primary" /> Action Details</CardTitle>
+              <CardTitle className="flex items-center gap-2 text-base"><ScanSearch className="h-4 w-4 text-primary" /> Simulate an Action</CardTitle>
+              <CardDescription>Simulations are recorded in the audit trail with source = ui. Agents never use this page — they call the enforcement endpoint with their own runtime key.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>

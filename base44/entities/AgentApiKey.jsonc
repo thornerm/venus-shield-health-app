@@ -1,0 +1,83 @@
+{
+  "name": "AgentApiKey",
+  "type": "object",
+  "title": "Agent API Key",
+  "description": "A runtime credential for one governed agent. The plaintext key is shown once at issue time; only its SHA-256 hash is stored.",
+  "properties": {
+    "agent_id": {
+      "type": "string",
+      "title": "Agent ID"
+    },
+    "label": {
+      "type": "string",
+      "title": "Label"
+    },
+    "key_prefix": {
+      "type": "string",
+      "title": "Key Prefix",
+      "description": "First 12 characters of the key, shown in the console for identification."
+    },
+    "key_hash": {
+      "type": "string",
+      "title": "Key Hash",
+      "description": "SHA-256 hex digest of the full key. The key itself is never stored."
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "revoked"
+      ],
+      "title": "Status",
+      "default": "active"
+    },
+    "created_by": {
+      "type": "string",
+      "title": "Created By"
+    },
+    "last_used_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Last Used"
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Expires"
+    },
+    "revoked_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Revoked At"
+    },
+    "revoked_by": {
+      "type": "string",
+      "title": "Revoked By"
+    }
+  },
+  "required": [
+    "agent_id"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

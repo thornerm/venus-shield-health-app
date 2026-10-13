@@ -161,6 +161,25 @@
       "type": "string",
       "title": "Requested By"
     },
+    "requested_via_key": {
+      "type": "string",
+      "title": "Requested Via Key",
+      "description": "Key prefix of the runtime credential that submitted this action, when it came from an agent runtime."
+    },
+    "source": {
+      "type": "string",
+      "enum": [
+        "ui",
+        "airtp",
+        "mcp-proxy",
+        "sdk",
+        "runtime",
+        "orchestrator"
+      ],
+      "title": "Source",
+      "default": "ui",
+      "description": "Which path requested the verdict: the human console, AIRTP, an agent runtime (MCP proxy/SDK), or the orchestrator."
+    },
     "policy_matches": {
       "type": "array",
       "title": "All Matched Policies",

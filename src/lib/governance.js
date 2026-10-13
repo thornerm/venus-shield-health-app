@@ -160,190 +160,43 @@ function resolvePolicyConflicts(matched) {
  * `actor` is the authenticated user initiating the evaluation (the requester).
  * It is recorded as `requested_by` and never overwrites historical attribution.
  */
-export async function evaluateAction({ agent_id, action_type, target_system, amount_usd = 0, params = {}, actor }) {
-  const agents = await base44.entities.ShieldAgent.filter({ agent_id });
-  const agent = agents?.[0];
-  if (!agent) {
-    return { error: `No governed agent found with id "${agent_id}". Register and approve the agent first.` };
-  }
-
-  const requester = actor?.display || UNATTRIBUTED;
-  const requesterEmail = actor?.email || "";
-
-  const reasons = [];
-  let stepNo = 1;
-  const ts = now();
-  const add = (type, text) => reasons.push(`${stepNo++}. [${ts}] ${type}: ${text}`);
-
-  add("INIT", `Evaluation started for agent "${agent.name}" (${agent.agent_id}). Requested by ${requester}.`);
-
-  const finMode = agent.financial_limit_mode || "approval_threshold";
-  const finModeLabel = FINANCIAL_LIMIT_MODES[finMode]?.label || finMode;
-  add("PASSPORT", `Autonomy: ${agent.autonomy_level}. Financial limit: $${Number(agent.financial_limit_usd || 0).toLocaleString()} (${finModeLabel}). Authorized systems: ${(agent.systems || []).join(", ") || "none"}.`);
-  add("ACTION", `Requested action "${action_type}" against target "${target_system}" for $${Number(amount_usd || 0).toLocaleString()}.`);
-
-  const exfil = isExfiltration(action_type, target_system, params);
-  const blast = computeBlastRadius({ action_type, target_system, amount_usd, params });
-  const reversibility = reversibilityFor(action_type, blast, exfil);
-  add("ASSESS", `Blast radius: ${blast}/5. Reversibility: ${reversibility}.`);
-
-  // Evaluate ALL matching policies and resolve conflicts.
-  let matchedList = [];
-  let decisiveDecision = "allow";
-  let decisivePolicy = null;
+export async function evaluateAction({ agent_id, action_type, target_system, amount_usd = 0, params = {}, actor, source = "ui" }) {
+  // The verdict is produced by the one shared engine on the server, so the
+  // console and the agent runtime can never disagree. Nothing is decided here.
+  let data = null;
   try {
-    const policies = await base44.entities.ShieldPolicy.filter({ is_active: true });
-    const matched = (policies || []).filter((p) => policyMatchesFn(p, { action_type, target_system, amount_usd, params }, exfil));
-    const resolved = resolvePolicyConflicts(matched);
-    matchedList = resolved.matches;
-    decisiveDecision = resolved.decisiveDecision;
-    decisivePolicy = resolved.decisivePolicy;
-    if (matchedList.length === 0) {
-      add("POLICY MATCH", "No explicit policy matched; passport rules govern.");
-    } else {
-      add("POLICY MATCH", `${matchedList.length} policy(ies) matched:`);
-      matchedList.forEach((m) => add("POLICY MATCH", `"${m.name}" (priority ${m.priority}) → required decision: ${m.required_decision}.`));
-      add("CONFLICT", `Conflict resolution (blocked > approval_required > allow): decisive policy "${decisivePolicy.name}" → ${decisiveDecision}.`);
-    }
+    const res = await base44.functions.invoke("evaluate-ui", {
+      agent_id,
+      action_type,
+      target_system,
+      amount_usd: Number(amount_usd) || 0,
+      params,
+      source,
+    });
+    data = res?.data;
   } catch (e) {
-    add("POLICY MATCH", "Policy lookup unavailable; passport rules govern.");
+    return { error: e?.response?.data?.error || e?.message || "Evaluation failed." };
   }
+  if (!data || data.error) return { error: data?.error || "Evaluation failed." };
 
-  const prohibited = (agent.prohibited_actions || []).map((a) => String(a).toLowerCase());
-  const actionLower = (action_type || "").toLowerCase();
-  const systems = (agent.systems || []).map((s) => String(s).toLowerCase());
-  const systemAuthorized = systems.includes((target_system || "").toLowerCase());
-  const overLimit = Number(amount_usd || 0) > Number(agent.financial_limit_usd || 0);
-
-  let decision = "allow";
-  let status = "executed";
-  let alertOwner = false;
-  let downgrade = false;
-  const prevAuto = agent.autonomy_level;
-  let newAuto = agent.autonomy_level;
-  let blockReason = null;
-
-  // 1. Passport hard prohibitions (always block).
-  if (prohibited.includes(actionLower)) {
-    blockReason = `Action "${action_type}" is in the agent's prohibited list [${(agent.prohibited_actions || []).join(", ")}].`;
-    add("VIOLATION", blockReason);
-    decision = "blocked";
-  } else if (!systemAuthorized) {
-    blockReason = `Target system "${target_system}" is not in the agent's authorized systems [${(agent.systems || []).join(", ") || "none"}].`;
-    add("VIOLATION", blockReason);
-    decision = "blocked";
-  } else if (exfil) {
-    blockReason = `Bulk data exfiltration detected (export to "${target_system}" with sensitive/PII data).`;
-    add("VIOLATION", blockReason);
-    decision = "blocked";
-  } else {
-    add("PASSED", "Action is not prohibited, target is authorized, and no exfiltration pattern detected.");
-  }
-
-  // 2. Financial hard cap (block, cannot be approved).
-  if (decision !== "blocked" && finMode === "hard_cap" && overLimit) {
-    blockReason = `Amount $${Number(amount_usd).toLocaleString()} exceeds the agent's hard cap of $${Number(agent.financial_limit_usd || 0).toLocaleString()} (cannot be approved).`;
-    add("VIOLATION", blockReason);
-    decision = "blocked";
-  }
-
-  // 3. Policy hard blocks.
-  if (decision !== "blocked" && decisiveDecision === "blocked") {
-    blockReason = `Policy "${decisivePolicy.name}" requires BLOCKED.`;
-    add("POLICY BLOCK", blockReason);
-    decision = "blocked";
-  }
-
-  if (decision === "blocked") {
-    status = "blocked";
-    alertOwner = true;
-    if (AUTONOMY_RANK[prevAuto] > AUTONOMY_RANK.restricted) {
-      downgrade = true;
-      newAuto = "restricted";
-      add("RATCHET", `Autonomy downgraded: ${prevAuto} → restricted.`);
-    } else {
-      add("RATCHET", "Autonomy ratchet applied: already at restricted floor (no further downgrade).");
-    }
-    add("DECISION", `Verdict: BLOCKED. ${blockReason} Owner alerted. Blast radius locked at 5, action marked irreversible.`);
-  } else {
-    // 4. Approval requirements.
-    const approvalReasons = [];
-    if (finMode === "approval_threshold" && overLimit) approvalReasons.push(`Amount $${Number(amount_usd).toLocaleString()} exceeds the approval threshold of $${Number(agent.financial_limit_usd || 0).toLocaleString()}`);
-    if (decisiveDecision === "approval_required") approvalReasons.push(`Policy "${decisivePolicy.name}" requires approval`);
-    const restrictedHighBlast = agent.autonomy_level === "restricted" && blast >= 3;
-    const irreversibleSensitive = reversibility === "irreversible";
-    if (restrictedHighBlast) approvalReasons.push(`Restricted autonomy with blast radius ${blast} (>= 3)`);
-    if (irreversibleSensitive) approvalReasons.push("Irreversible action");
-
-    if (approvalReasons.length) {
-      approvalReasons.forEach((r) => add("EXCEEDED", `${r} requires human approval.`));
-      decision = "approval_required";
-      status = "pending_approval";
-      add("DECISION", "Verdict: APPROVAL REQUIRED. Action held pending human review.");
-    } else {
-      add("DECISION", "Verdict: ALLOW. Action within passport; executed.");
-    }
-  }
-
-  const record = await base44.entities.ActionRecord.create({
-    agent_id: agent.agent_id,
-    agent_name: agent.name,
-    action_type,
-    target_system,
-    amount_usd: Number(amount_usd || 0),
-    params: params || {},
-    request_uid: generateRequestUid("ACT"),
-    environment: "prod",
-    scope_type: "single_execution",
-    approval_expires_at: decision === "approval_required" ? new Date(Date.now() + 72 * 3600 * 1000).toISOString() : null,
-    blast_radius_score: decision === "blocked" ? 5 : blast,
-    reversibility: decision === "blocked" ? "irreversible" : reversibility,
-    decision,
-    status,
-    requested_by: requester,
-    policy_matches: matchedList,
-    policy_matched_name: decisivePolicy?.name || null,
-    policy_matched_priority: decisivePolicy?.priority ?? null,
-    financial_limit_mode: finMode,
-    alert_owner: alertOwner,
-    autonomy_downgraded: downgrade,
-    previous_autonomy_level: prevAuto,
-    new_autonomy_level: decision === "blocked" ? newAuto : prevAuto,
-    decided_by: decision === "allow" ? AUTO_ALLOW_ACTOR : null,
-    decided_date: decision === "allow" ? now() : null,
-    reasons,
-  });
-
-  if (downgrade) {
-    try { await base44.entities.ShieldAgent.update(agent.id, { autonomy_level: "restricted" }); } catch (e) { /* noop */ }
-  }
+  // The owner/approver alert still goes out from the request that raised it.
   let notification = null;
-  if (decision === "blocked" || decision === "approval_required") {
+  if (data.decision === "blocked" || data.decision === "approval_required") {
     try {
       notification = await notifySecurityEvent({
-        event: decision,
-        record,
-        agent,
-        blast: decision === "blocked" ? 5 : blast,
-        reversibility: decision === "blocked" ? "irreversible" : reversibility,
-        prevAuto,
-        newAuto: decision === "blocked" ? newAuto : prevAuto,
-        approverEmail: requesterEmail,
+        event: data.decision,
+        record: data.record,
+        agent: data.agent,
+        blast: data.blast_radius_score,
+        reversibility: data.reversibility,
+        prevAuto: data.record.previous_autonomy_level,
+        newAuto: data.record.new_autonomy_level,
+        approverEmail: actor?.email || "",
       });
     } catch (e) { /* surfaced in Approvals queue regardless */ }
   }
 
-  return {
-    record,
-    decision,
-    notification,
-    agent: { ...agent, autonomy_level: downgrade ? "restricted" : agent.autonomy_level },
-    blast_radius_score: decision === "blocked" ? 5 : blast,
-    reversibility: decision === "blocked" ? "irreversible" : reversibility,
-    policyMatches: matchedList,
-    decisivePolicy,
-    financialLimitMode: finMode,
-  };
+  return { ...data, notification };
 }
 
 function selfApprovalError(actor, requester, ownerEmail) {
@@ -459,6 +312,13 @@ export async function revokeAgent(agentId, actor, reasonText = "") {
     review_status: "needs_attention",
     version_history: [...(agent.version_history || []), { version: agent.passport_version || 1, changed_by: decidedBy, changed_at: now(), summary: `Passport revoked${reasonText ? ": " + reasonText : "."}` }],
   });
+  // A revoked passport must not keep working runtime credentials.
+  try {
+    await base44.entities.AgentApiKey.updateMany(
+      { agent_id: agent.agent_id, status: "active" },
+      { $set: { status: "revoked", revoked_at: now(), revoked_by: decidedBy } }
+    );
+  } catch (e) { /* the runtime also refuses a passport that is not active */ }
   await base44.entities.ActionRecord.create({
     agent_id: agent.agent_id, agent_name: agent.name, action_type: "revoke_passport", target_system: "governance",
     amount_usd: 0, params: { reason: reasonText }, decision: "blocked", status: "blocked",

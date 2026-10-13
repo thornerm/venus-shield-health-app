@@ -185,7 +185,17 @@ export default function Approvals() {
                       </TableCell>
                       <TableCell>
                         <div className="text-[13px] font-medium text-foreground">{a.agent_name || a.agent_id}</div>
-                        <div className="font-mono text-[10px] text-muted-foreground">{a.agent_id}</div>
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <span className="font-mono text-[10px] text-muted-foreground">{a.agent_id}</span>
+                          {a.source && a.source !== "ui" && (
+                            <span
+                              title={`Runtime record · source: ${a.source}${a.requested_via_key ? ` · key ${a.requested_via_key}` : ""}`}
+                              className="inline-flex rounded-full bg-info/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-info"
+                            >
+                              {a.source === "mcp-proxy" || a.source === "sdk" || a.source === "runtime" ? "Runtime" : a.source}
+                            </span>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell className="text-[13px] text-muted-foreground">{a.target_system || "—"}</TableCell>
                       <TableCell>

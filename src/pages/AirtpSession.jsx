@@ -90,6 +90,7 @@ export default function AirtpSession() {
         amount_usd: Number(amount) || 0,
         params,
         actor,
+        source: "airtp",
       });
       setResult(res);
       if (res.error) {
