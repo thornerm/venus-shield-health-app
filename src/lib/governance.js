@@ -1,15 +1,13 @@
 import { base44 } from "@/api/base44Client";
 import { notifySecurityEvent } from "@/lib/notifications";
-import { DEMO_APPROVER_DISPLAY, DEMO_APPROVER_EMAIL, normalizeActor } from "@/lib/identity";
+import { UNATTRIBUTED, normalizeActor } from "@/lib/identity";
 import { generateRequestUid } from "@/lib/metrics";
 
 /**
- * Demo governance approver — kept for backward compatibility with existing
- * imports. The real authenticated user is the source of truth (see identity.js).
+ * Actor attribution. Every requester and decider is the authenticated user
+ * (see identity.js) — no approver identity is hardcoded.
  */
-export const APPROVER_NAME = "Micah Thorner";
-export const APPROVER_EMAIL = "micah@venusaipros.com";
-export const APPROVER_DISPLAY = DEMO_APPROVER_DISPLAY;
+export const APPROVER_EMAIL = "";
 
 export const AUTONOMY_DEFINITIONS = {
   full: "The agent has full autonomy to make decisions without human review and approval.",
@@ -169,7 +167,7 @@ export async function evaluateAction({ agent_id, action_type, target_system, amo
     return { error: `No governed agent found with id "${agent_id}". Register and approve the agent first.` };
   }
 
-  const requester = actor?.display || DEMO_APPROVER_DISPLAY;
+  const requester = actor?.display || UNATTRIBUTED;
   const requesterEmail = actor?.email || "";
 
   const reasons = [];
@@ -330,7 +328,7 @@ export async function evaluateAction({ agent_id, action_type, target_system, amo
         reversibility: decision === "blocked" ? "irreversible" : reversibility,
         prevAuto,
         newAuto: decision === "blocked" ? newAuto : prevAuto,
-        approverEmail: requesterEmail || DEMO_APPROVER_EMAIL,
+        approverEmail: requesterEmail,
       });
     } catch (e) { /* surfaced in Approvals queue regardless */ }
   }
@@ -361,7 +359,7 @@ export async function approveAgentRequest(requestId, actor, reasonText = "") {
   const err = selfApprovalError(actor, req.requested_by, req.owner_email);
   if (err) return { ok: false, error: err };
   if (req.status !== "pending") return { ok: false, error: `This request is already ${req.status}. Stale decisions are rejected.` };
-  const decidedBy = actor?.display || DEMO_APPROVER_DISPLAY;
+  const decidedBy = actor?.display || UNATTRIBUTED;
   const history = [...(req.decision_history || []), { actor: decidedBy, action: "approved", reason: reasonText || "Approved.", timestamp: now() }];
   const agent = await base44.entities.ShieldAgent.create({
     agent_id: req.agent_id,
@@ -398,7 +396,7 @@ export async function denyAgentRequest(requestId, actor, reasonText = "") {
   const err = selfApprovalError(actor, req.requested_by, req.owner_email);
   if (err) return { ok: false, error: err };
   if (req.status !== "pending") return { ok: false, error: `This request is already ${req.status}. Stale decisions are rejected.` };
-  const decidedBy = actor?.display || DEMO_APPROVER_DISPLAY;
+  const decidedBy = actor?.display || UNATTRIBUTED;
   const history = [...(req.decision_history || []), { actor: decidedBy, action: "denied", reason: reasonText || "Denied.", timestamp: now() }];
   await base44.entities.AgentApprovalRequest.update(requestId, {
     status: "denied",
@@ -418,7 +416,7 @@ export async function approveAction(actionId, actor, reasonText = "") {
   if (rec.execution_consumed) return { ok: false, error: "This approval has already been consumed to execute the action once — it cannot be executed twice." };
   const exp = rec.approval_expires_at ? new Date(rec.approval_expires_at).getTime() - Date.now() : null;
   if (exp !== null && exp < 0) return { ok: false, error: "This approval has expired and can no longer be used." };
-  const decidedBy = actor?.display || DEMO_APPROVER_DISPLAY;
+  const decidedBy = actor?.display || UNATTRIBUTED;
   const history = [...(rec.decision_history || []), { actor: decidedBy, action: "approved", reason: reasonText || "Approved.", timestamp: now() }];
   await base44.entities.ActionRecord.update(actionId, {
     status: "approved",
@@ -437,7 +435,7 @@ export async function denyAction(actionId, actor, reasonText = "") {
   const err = selfApprovalError(actor, rec.requested_by, null);
   if (err) return { ok: false, error: err };
   if (rec.status !== "pending_approval") return { ok: false, error: `This action is already ${rec.status}. Stale decisions are rejected.` };
-  const decidedBy = actor?.display || DEMO_APPROVER_DISPLAY;
+  const decidedBy = actor?.display || UNATTRIBUTED;
   const history = [...(rec.decision_history || []), { actor: decidedBy, action: "denied", reason: reasonText || "Denied.", timestamp: now() }];
   await base44.entities.ActionRecord.update(actionId, {
     status: "denied",
@@ -455,7 +453,7 @@ export async function revokeAgent(agentId, actor, reasonText = "") {
   const agent = agents?.[0];
   if (!agent) return { ok: false, error: "Agent not found." };
   if (!agent.is_active) return { ok: false, error: "This passport is already revoked." };
-  const decidedBy = actor?.display || DEMO_APPROVER_DISPLAY;
+  const decidedBy = actor?.display || UNATTRIBUTED;
   await base44.entities.ShieldAgent.update(agent.id, {
     is_active: false,
     review_status: "needs_attention",
@@ -476,7 +474,7 @@ export async function renewAgent(agentId, actor, newExpiryIso, reasonText = "") 
   const agents = await base44.entities.ShieldAgent.filter({ agent_id: agentId });
   const agent = agents?.[0];
   if (!agent) return { ok: false, error: "Agent not found." };
-  const decidedBy = actor?.display || DEMO_APPROVER_DISPLAY;
+  const decidedBy = actor?.display || UNATTRIBUTED;
   const newVersion = (agent.passport_version || 1) + 1;
   await base44.entities.ShieldAgent.update(agent.id, {
     passport_expires_at: newExpiryIso,

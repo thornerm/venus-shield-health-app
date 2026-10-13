@@ -76,7 +76,7 @@ export default function RegisterAgent() {
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base"><UserPlus className="h-4 w-4 text-primary" /> Agent Intake</CardTitle>
-            <CardDescription>All fields are required for governance review. The request is attributed to you ({user?.email || "—"}).</CardDescription>
+            <CardDescription>All fields are required for governance review. The request is attributed to you{user?.email ? ` (${user.email})` : ""}.</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={submit} className="space-y-4">

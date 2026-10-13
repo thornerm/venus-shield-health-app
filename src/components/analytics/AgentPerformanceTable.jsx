@@ -53,7 +53,7 @@ export default function AgentPerformanceTable({ rows, loading }) {
                   <TableCell className="text-center text-[13px] tabular-nums text-blocked">{a.blocked}</TableCell>
                   <TableCell className="text-center text-[13px] font-medium tabular-nums">
                     <span className={a.firstPass == null ? "text-muted-foreground" : a.firstPass >= 80 ? "text-allow" : a.firstPass >= 50 ? "text-review" : "text-blocked"}>
-                      {a.firstPass == null ? "Unknown" : `${a.firstPass}%`}
+                      {a.firstPass == null ? "—" : `${a.firstPass}%`}
                     </span>
                   </TableCell>
                   <TableCell className="max-w-[180px] text-xs text-muted-foreground">{a.risk?.observed.join(", ") || "none"}</TableCell>

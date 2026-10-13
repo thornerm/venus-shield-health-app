@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { evaluateAction, APPROVER_DISPLAY } from "@/lib/governance";
+import { evaluateAction } from "@/lib/governance";
+import { getCurrentActor } from "@/lib/identity";
 import {
   AIRTPRuntime,
   InvokeLLMAdapter,
@@ -81,13 +82,14 @@ export default function AirtpSession() {
     setRunning(true);
     try {
       // 1) Governance: evaluate the proposed agent action against its passport.
+      const actor = await getCurrentActor();
       const res = await evaluateAction({
         agent_id: agentId,
         action_type: actionType,
         target_system: targetSystem,
         amount_usd: Number(amount) || 0,
         params,
-        requested_by: APPROVER_DISPLAY,
+        actor,
       });
       setResult(res);
       if (res.error) {

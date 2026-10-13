@@ -35,7 +35,7 @@ export default function DecisionSummary({ verdicts, statuses, requests, firstPas
           <Row label="Blocked" value={verdicts.blocked} tone="text-blocked" />
           <Row
             label="First-pass Allow Rate"
-            value={firstPassRate == null ? "Unknown" : `${firstPassRate}%`}
+            value={firstPassRate == null ? "—" : `${firstPassRate}%`}
             tone="text-foreground"
             tooltip={METRIC_DEFINITIONS.firstPassAllowRate}
           />

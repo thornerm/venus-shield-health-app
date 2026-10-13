@@ -63,7 +63,7 @@ export default function EvaluateAction() {
     <div className="space-y-6">
       <div>
         <h1 className="font-heading text-2xl font-bold tracking-tight">Evaluate Action</h1>
-        <p className="text-sm text-muted-foreground">Run a proposed agent action through the governance engine. Every verdict is recorded with a full reasoning trace and attributed to you ({user?.email || "—"}).</p>
+        <p className="text-sm text-muted-foreground">Run a proposed agent action through the governance engine. Every verdict is recorded with a full reasoning trace and attributed to you{user?.email ? ` (${user.email})` : ""}.</p>
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">

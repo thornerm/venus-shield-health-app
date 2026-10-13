@@ -11,6 +11,8 @@ import DashboardHero from "@/components/dashboard/DashboardHero";
 import MetricCard, { TrendPill } from "@/components/dashboard/MetricCard";
 import AgentActivityChart from "@/components/dashboard/AgentActivityChart";
 import RecentActionsPanel from "@/components/dashboard/RecentActionsPanel";
+import SkeletonRows from "@/components/SkeletonRows";
+import { Skeleton } from "@/components/ui/skeleton";
 import RiskOverview from "@/components/dashboard/RiskOverview";
 import DecisionSummary from "@/components/dashboard/DecisionSummary";
 import { riskForAgent } from "@/lib/governance";
@@ -94,32 +96,32 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <MetricCard
           label="Active Agents"
-          value={activeAgents}
+          value={loading ? <Skeleton className="h-8 w-14" /> : activeAgents}
           icon={Bot}
           tone="blue"
-          hint={`${monitoredIds.size} with recorded activity`}
+          hint={loading ? undefined : `${monitoredIds.size} with recorded activity`}
         />
         <MetricCard
           label="Actions Monitored"
-          value={v.total}
+          value={loading ? <Skeleton className="h-8 w-16" /> : v.total}
           icon={Activity}
           tone="gold"
-          trend={<WindowTrend records={fActions} upTone="muted" downTone="muted" />}
+          trend={loading ? null : <WindowTrend records={fActions} upTone="muted" downTone="muted" />}
         />
         <MetricCard
           label="Blocked Actions"
-          value={v.blocked}
+          value={loading ? <Skeleton className="h-8 w-14" /> : v.blocked}
           icon={Ban}
           tone="red"
-          trend={<WindowTrend records={blockedActions} upTone="blocked" downTone="allow" />}
+          trend={loading ? null : <WindowTrend records={blockedActions} upTone="blocked" downTone="allow" />}
         />
         <MetricCard
           label="Pending Reviews"
-          value={rs.pending + s.pending_approval}
+          value={loading ? <Skeleton className="h-8 w-12" /> : rs.pending + s.pending_approval}
           icon={ClipboardCheck}
           tone="amber"
           to="/approvals"
-          hint={`${rs.pending} agent · ${s.pending_approval} action`}
+          hint={loading ? undefined : `${rs.pending} agent · ${s.pending_approval} action`}
         />
       </div>
 
@@ -149,7 +151,7 @@ export default function Dashboard() {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="py-10 text-center text-sm text-muted-foreground">Loading agents…</div>
+            <SkeletonRows rows={4} />
           ) : agents.length === 0 ? (
             <div className="py-10 text-center text-sm text-muted-foreground">No agents registered yet.</div>
           ) : (
@@ -172,9 +174,9 @@ export default function Dashboard() {
                     return (
                       <TableRow key={ag.id} className="border-border">
                         <TableCell>
-                          <div className="flex items-center gap-1.5">
-                            <Link to={`/passports/${ag.id}`} className="font-medium text-foreground hover:text-primary hover:underline">{ag.name}</Link>
-                            {!monitored && <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">no activity</span>}
+                          <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
+                            <Link to={`/passports/${ag.id}`} className="min-w-0 truncate font-medium text-foreground hover:text-primary hover:underline">{ag.name}</Link>
+                            {!monitored && <span className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">no activity</span>}
                           </div>
                           <div className="text-xs text-muted-foreground">{ag.agent_id}</div>
                         </TableCell>

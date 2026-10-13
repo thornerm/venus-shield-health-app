@@ -1,14 +1,11 @@
 import { base44 } from "@/api/base44Client";
 
 /**
- * Demo / fallback governance approver. Used ONLY for demo scenarios and as a
- * last-resort fallback when no authenticated user is available. The real
- * authenticated user (base44.auth.me()) is the single source of truth for
- * current-user identity, form defaults, and audit actor attribution.
+ * Identity helpers. The authenticated user (base44.auth.me()) is the single
+ * source of truth for current-user identity, form defaults, and audit actor
+ * attribution. There is no hardcoded approver identity.
  */
-export const DEMO_APPROVER_NAME = "Micah Thorner";
-export const DEMO_APPROVER_EMAIL = "micah@venusaipros.com";
-export const DEMO_APPROVER_DISPLAY = "Micah Thorner <micah@venusaipros.com>";
+export const UNATTRIBUTED = "Unattributed";
 
 let cachedActor = null;
 
@@ -34,9 +31,9 @@ export async function getCurrentActor() {
   } catch {
     cachedActor = {
       id: null,
-      name: DEMO_APPROVER_NAME,
-      email: DEMO_APPROVER_EMAIL,
-      display: DEMO_APPROVER_DISPLAY,
+      name: UNATTRIBUTED,
+      email: "",
+      display: UNATTRIBUTED,
       role: "user",
       isDemo: true,
     };

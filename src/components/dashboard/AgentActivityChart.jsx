@@ -50,6 +50,7 @@ export default function AgentActivityChart({ actions }) {
   }, [actions]);
 
   const hasData = series.some((p) => p.allow + p.review + p.blocked > 0);
+  const recorded = series.reduce((n, p) => n + p.allow + p.review + p.blocked, 0);
 
   return (
     <Panel
@@ -72,6 +73,7 @@ export default function AgentActivityChart({ actions }) {
           No evaluated actions in this range yet.
         </div>
       ) : (
+        <>
         <div className="h-[280px] w-full">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={series} margin={{ top: 8, right: 8, left: -18, bottom: 0 }}>
@@ -109,6 +111,12 @@ export default function AgentActivityChart({ actions }) {
             </AreaChart>
           </ResponsiveContainer>
         </div>
+        {recorded > 0 && recorded < 5 && (
+          <p className="px-1 pt-3 text-xs text-muted-foreground">
+            Only {recorded} evaluated action{recorded === 1 ? "" : "s"} on record in this range. That is too few to read a trend — treat the chart's shape as sparse evidence, not a pattern.
+          </p>
+        )}
+        </>
       )}
     </Panel>
   );

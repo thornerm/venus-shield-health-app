@@ -91,12 +91,14 @@ export default function Approvals() {
 
   const handleApprove = (reason) => {
     if (!review) return;
+    if (!canDecide()) { setError("Only a governance admin can approve or deny."); return; }
     const { kind, item } = review;
     if (kind === "agent") run(() => approveAgentRequest(item.id, actor, reason), item.id);
     else run(() => approveAction(item.id, actor, reason), item.id);
   };
   const handleDeny = (reason) => {
     if (!review) return;
+    if (!canDecide()) { setError("Only a governance admin can approve or deny."); return; }
     const { kind, item } = review;
     if (kind === "agent") run(() => denyAgentRequest(item.id, actor, reason), item.id);
     else run(() => denyAction(item.id, actor, reason), item.id);
@@ -163,7 +165,7 @@ export default function Approvals() {
                   <TableHead>Risk</TableHead>
                   <TableHead>Request Time</TableHead>
                   <TableHead>Decision Status</TableHead>
-                  <TableHead className="text-right">Controls</TableHead>
+                  <TableHead className="sticky right-0 z-20 bg-card text-right">Controls</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -201,9 +203,9 @@ export default function Approvals() {
                           <StatusBadge status={a.status} />
                         </div>
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="sticky right-0 z-10 bg-card text-right">
                         <div className="flex items-center justify-end gap-1.5">
-                          {pending && (
+                          {pending && canApproveAction(a) && (
                             <>
                               <Button size="sm" className="h-8 bg-allow px-2.5 text-allow-foreground hover:bg-allow/90" onClick={() => openAction(a, "approve")}>
                                 <Check className="h-3.5 w-3.5" /> Approve

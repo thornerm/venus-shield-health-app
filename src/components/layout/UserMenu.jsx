@@ -23,16 +23,16 @@ export default function UserMenu() {
           className="inline-flex h-9 items-center gap-2 rounded-md border border-border pl-1 pr-2.5 transition-colors duration-200 hover:bg-accent"
         >
           <span className="flex h-7 w-7 items-center justify-center rounded-[6px] bg-primary/15 text-[11px] font-bold text-primary">
-            {initials(user?.full_name)}
+            {initials(user?.full_name || user?.email)}
           </span>
           <span className="hidden max-w-[130px] truncate text-xs font-medium text-foreground sm:inline">
-            {user?.full_name || "Account"}
+            {user?.full_name || user?.email || "Account"}
           </span>
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-64 border-border bg-popover">
         <DropdownMenuLabel className="font-normal">
-          <div className="truncate text-sm font-semibold text-foreground">{user?.full_name || "—"}</div>
+          <div className="truncate text-sm font-semibold text-foreground">{user?.full_name || user?.email || "Account"}</div>
           <div className="truncate text-xs text-muted-foreground">{user?.email || "—"}</div>
           <div className="mt-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-primary/90">
             {roleLabel(user?.role)}

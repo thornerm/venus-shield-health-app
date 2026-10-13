@@ -17,17 +17,18 @@ export default function AnalyticsKpis({ verdicts, firstPass, execution }) {
       />
       <MetricCard
         label={<DefinitionTooltip term="First-pass Allow Rate">{METRIC_DEFINITIONS.firstPassAllowRate}</DefinitionTooltip>}
-        value={firstPass == null ? "Unknown" : `${firstPass}%`}
+        value={firstPass == null ? "—" : `${firstPass}%`}
         icon={Gauge}
         tone="green"
-        valueClassName="text-allow"
+        valueClassName={firstPass == null ? "text-muted-foreground" : "text-allow"}
         hint={verdicts.total ? `${verdicts.allow} of ${verdicts.total} allowed` : "no evaluations in range"}
       />
       <MetricCard
         label={<DefinitionTooltip term="Execution Success Rate">{METRIC_DEFINITIONS.executionSuccessRate}</DefinitionTooltip>}
-        value={execution.hasConfirmed ? `${execution.rate}%` : "Unknown"}
+        value={execution.hasConfirmed ? `${execution.rate}%` : "—"}
         icon={CheckCircle2}
         tone="gold"
+        valueClassName={execution.hasConfirmed ? undefined : "text-muted-foreground"}
         hint={execution.hasConfirmed ? `${execution.succeeded}/${execution.total} confirmed` : "no confirmed outcomes"}
       />
       <MetricCard

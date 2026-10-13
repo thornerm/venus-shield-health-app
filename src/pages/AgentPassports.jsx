@@ -129,7 +129,8 @@ export default function AgentPassports() {
                       key={h || i}
                       className={cn(
                         "px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground",
-                        i === 5 && "text-right"
+                        i === 2 && "min-w-[180px]",
+                        i === 5 && "sticky right-0 z-20 bg-card text-right"
                       )}
                     >
                       {h}
@@ -162,9 +163,9 @@ export default function AgentPassports() {
                       <td className="px-5 py-3.5">
                         <div className="max-w-[280px] truncate text-[13px] text-muted-foreground">{ag.purpose || "—"}</div>
                       </td>
-                      <td className="px-5 py-3.5">
+                      <td className="min-w-[180px] px-5 py-3.5">
                         <div className="flex flex-col items-start gap-1.5">
-                          <span className={cn("inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium", st.cls)}>
+                          <span className={cn("inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 py-0.5 text-xs font-medium", st.cls)}>
                             <span className={cn("h-1.5 w-1.5 rounded-full", st.dot)} />
                             {st.label}
                           </span>
@@ -175,7 +176,7 @@ export default function AgentPassports() {
                       <td className="px-5 py-3.5 text-[13px] text-muted-foreground">
                         {last ? ageLabel(new Date(last).toISOString()) : <span className="text-muted-foreground/70">No activity</span>}
                       </td>
-                      <td className="px-5 py-3.5 text-right">
+                      <td className="sticky right-0 z-10 bg-card px-5 py-3.5 text-right">
                         <Link
                           to={`/passports/${ag.id}`}
                           onClick={(e) => e.stopPropagation()}
