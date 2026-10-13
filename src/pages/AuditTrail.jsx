@@ -7,6 +7,7 @@ import PageHeader from "@/components/PageHeader";
 import Panel from "@/components/Panel";
 import FilterBar from "@/components/FilterBar";
 import { verdictCounts, statusCounts, applyFilters, freshnessLabel, fmtDate, displayUid } from "@/lib/metrics";
+import { downloadCsv } from "@/lib/csv";
 import { Download, RefreshCw, ScrollText } from "lucide-react";
 
 function exportCsv(records) {
@@ -15,12 +16,7 @@ function exportCsv(records) {
     displayUid(r, "ACT"), r.created_date, r.agent_name, r.agent_id, r.action_type, r.target_system, r.amount_usd, r.blast_radius_score, r.reversibility, r.decision, r.status, r.environment || "prod",
     r.requested_by || "", r.policy_matched_name || "", (r.policy_matches || []).map((m) => `${m.name}(${m.required_decision})`).join(" | "), r.financial_limit_mode || "", r.decided_by || "",
   ]);
-  const csv = [headers, ...rows].map((row) => row.map((c) => `"${String(c ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url; a.download = "venus-shield-audit-trail.csv"; a.click();
-  URL.revokeObjectURL(url);
+  downloadCsv("venus-shield-audit-trail.csv", headers, rows);
 }
 
 function Tally({ label, value, tone }) {

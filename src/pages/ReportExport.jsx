@@ -1,22 +1,16 @@
 import { useEffect, useState, useMemo } from "react";
 import { base44 } from "@/api/base44Client";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import StatTile from "@/components/StatTile";
 import FilterBar from "@/components/FilterBar";
+import Panel from "@/components/Panel";
+import PageHeader from "@/components/PageHeader";
+import ReportCard from "@/components/reporting/ReportCard";
 import { VerdictBadge, StatusBadge } from "@/components/VerdictBadge";
 import { verdictCounts, statusCounts, requestStatusCounts, applyFilters, freshnessLabel, fmtDate, displayUid } from "@/lib/metrics";
+import { downloadCsv, downloadReport } from "@/lib/csv";
 import { FileDown, Download, RefreshCw, ClipboardCheck, ScrollText } from "lucide-react";
-
-function downloadCsv(filename, headers, rows) {
-  const csv = [headers, ...rows].map((r) => r.map((c) => `"${String(c ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url; a.download = filename; a.click();
-  URL.revokeObjectURL(url);
-}
 
 export default function ReportExport() {
   const [actions, setActions] = useState([]);
@@ -62,22 +56,20 @@ export default function ReportExport() {
     const bHeaders = ["[APPROVALS] Request UID,Timestamp,Type,Agent ID,Name,Owner,Status,Decided By,Decided Date"];
     const bRows = fRequests.map((r) => [displayUid(r, "REQ"), r.created_date, r.request_type, r.agent_id, r.name, r.owner_name, r.status, r.decided_by || "", r.decided_date || ""].join(","));
     const text = ["Venus Shield — Compliance Report", `Generated: ${new Date().toISOString()}`, `Filters: env=${env} range=${range}`, "", ...aHeaders, ...aRows, "", ...bHeaders, ...bRows].join("\n");
-    const blob = new Blob([text], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url; a.download = "venus-shield-compliance-report.csv"; a.click();
-    URL.revokeObjectURL(url);
+    downloadReport("venus-shield-compliance-report.csv", text);
   };
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="font-heading text-2xl font-bold tracking-tight">Report Export</h1>
-          <p className="text-sm text-muted-foreground">Generate compliance logs of all agent actions and approvals. Totals use the same definitions as the Dashboard and Audit Trail.</p>
-        </div>
-        <Button variant="outline" size="sm" onClick={load} disabled={loading}><RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} /> Refresh</Button>
-      </div>
+      <PageHeader
+        title="Reporting"
+        subtitle="Generate compliance logs of every governed action and approval. Exports reflect the filters below and use the same definitions as the Dashboard and Audit Trail."
+        actions={
+          <Button variant="outline" size="sm" onClick={load} disabled={loading}>
+            <RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} /> Refresh
+          </Button>
+        }
+      />
 
       <FilterBar env={env} setEnv={setEnv} range={range} setRange={setRange} freshness={freshness} />
 
@@ -88,47 +80,76 @@ export default function ReportExport() {
         <StatTile label="Approval Requests" value={fRequests.length} icon={ClipboardCheck} tone="blue" hint={`${rs.pending} pending · ${rs.denied} denied`} />
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base"><Download className="h-4 w-4 text-primary" /> Generate Reports</CardTitle>
-          <CardDescription>Download CSV files suitable for compliance audits and SOC 2 evidence. Exports reflect the current filters.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <Button variant="outline" onClick={exportActions} disabled={!fActions.length}><FileDown className="mr-2 h-4 w-4" /> Actions Log ({fActions.length})</Button>
-            <Button variant="outline" onClick={exportApprovals} disabled={!fRequests.length}><FileDown className="mr-2 h-4 w-4" /> Approvals Log ({fRequests.length})</Button>
-            <Button variant="outline" onClick={exportCombined} disabled={!fActions.length && !fRequests.length}><Download className="mr-2 h-4 w-4" /> Combined Compliance Report</Button>
-          </div>
-        </CardContent>
-      </Card>
+      <Panel
+        title="Available Reports"
+        description="CSV files suitable for compliance audits and SOC 2 evidence. Each download covers the records matching the filters above."
+        icon={Download}
+      >
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+          <ReportCard
+            title="Actions Log"
+            description="Every evaluated action with its verdict, blast radius, matched policy, decision trail, and execution outcome."
+            count={fActions.length}
+            icon={ScrollText}
+            onDownload={exportActions}
+          />
+          <ReportCard
+            title="Approvals Log"
+            description="Every agent passport request with its scope, deadline, financial limits, and the decision that was recorded."
+            count={fRequests.length}
+            icon={ClipboardCheck}
+            onDownload={exportApprovals}
+          />
+          <ReportCard
+            title="Combined Compliance Report"
+            description="Actions and approvals in a single file, stamped with the generation time and the filters in force."
+            count={fActions.length + fRequests.length}
+            icon={Download}
+            onDownload={exportCombined}
+            accent
+          />
+        </div>
+      </Panel>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base"><ScrollText className="h-4 w-4 text-primary" /> Recent Actions</CardTitle>
-          <CardDescription>Preview of the most recent evaluated actions under the current filters.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {loading ? <div className="py-8 text-center text-sm text-muted-foreground">Loading…</div> : fActions.length === 0 ? <div className="py-8 text-center text-sm text-muted-foreground">No actions recorded.</div> : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader><TableRow><TableHead>Request UID</TableHead><TableHead>Timestamp</TableHead><TableHead>Agent</TableHead><TableHead>Action</TableHead><TableHead>Decision</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
-                <TableBody>
-                  {fActions.slice(0, 8).map((r) => (
-                    <TableRow key={r.id}>
-                      <TableCell className="font-mono text-xs text-muted-foreground">{displayUid(r, "ACT")}</TableCell>
-                      <TableCell className="whitespace-nowrap text-xs text-muted-foreground">{fmtDate(r.created_date)}</TableCell>
-                      <TableCell className="font-medium">{r.agent_name}</TableCell>
-                      <TableCell className="font-mono text-xs">{r.action_type}</TableCell>
-                      <TableCell><VerdictBadge decision={r.decision} /></TableCell>
-                      <TableCell><StatusBadge status={r.status} /></TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      <Panel
+        title="Recent Actions"
+        description="Preview of the most recent evaluated actions under the current filters."
+        icon={ScrollText}
+        contentClassName="p-0"
+      >
+        {loading ? (
+          <div className="px-5 py-12 text-center text-sm text-muted-foreground">Loading…</div>
+        ) : fActions.length === 0 ? (
+          <div className="px-5 py-12 text-center text-sm text-muted-foreground">No actions recorded for these filters.</div>
+        ) : (
+          <div className="vs-scroll overflow-x-auto">
+            <Table className="min-w-[760px]">
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Request UID</TableHead>
+                  <TableHead>Timestamp</TableHead>
+                  <TableHead>Agent</TableHead>
+                  <TableHead>Action</TableHead>
+                  <TableHead>Decision</TableHead>
+                  <TableHead>Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {fActions.slice(0, 8).map((r) => (
+                  <TableRow key={r.id} className="transition-colors duration-200 hover:bg-surface/40">
+                    <TableCell className="font-mono text-xs text-muted-foreground">{displayUid(r, "ACT")}</TableCell>
+                    <TableCell className="whitespace-nowrap text-xs text-muted-foreground">{fmtDate(r.created_date)}</TableCell>
+                    <TableCell className="text-[13px] font-medium text-foreground">{r.agent_name}</TableCell>
+                    <TableCell className="font-mono text-xs text-foreground">{r.action_type}</TableCell>
+                    <TableCell><VerdictBadge decision={r.decision} /></TableCell>
+                    <TableCell><StatusBadge status={r.status} /></TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </Panel>
     </div>
   );
 }

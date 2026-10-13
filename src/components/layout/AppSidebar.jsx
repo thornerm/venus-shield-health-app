@@ -30,8 +30,8 @@ const GROUPS = [
     label: "Oversight",
     items: [
       { to: "/audit", label: "Audit Trail", icon: ScrollText },
-      { to: "/agent-performance", label: "Performance", icon: TrendingUp },
-      { to: "/report-export", label: "Reports", icon: FileDown },
+      { to: "/agent-performance", label: "Analytics", icon: TrendingUp },
+      { to: "/report-export", label: "Reporting", icon: FileDown },
     ],
   },
   {

@@ -1,13 +1,13 @@
 import { useMemo } from "react";
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import Panel from "@/components/Panel";
+import { CHART, VERDICT_COLORS } from "@/lib/chartTheme";
 
-// Chart series colours are the palette values as literals — data-visualisation
-// libraries need concrete colour strings rather than CSS custom properties.
+// Verdict series reuse the shared chart palette so every chart in the app matches.
 const SERIES = [
-  { key: "allow", label: "Allowed", color: "#10B981" },
-  { key: "review", label: "Review", color: "#F59E0B" },
-  { key: "blocked", label: "Blocked", color: "#EF4444" },
+  { key: "allow", label: "Allowed", color: VERDICT_COLORS.allow },
+  { key: "review", label: "Review", color: VERDICT_COLORS.approval_required },
+  { key: "blocked", label: "Blocked", color: VERDICT_COLORS.blocked },
 ];
 
 function buildSeries(actions, days) {
@@ -75,10 +75,10 @@ export default function AgentActivityChart({ actions }) {
         <div className="h-[280px] w-full">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={series} margin={{ top: 8, right: 8, left: -18, bottom: 0 }}>
-              <CartesianGrid stroke="#253246" strokeDasharray="3 3" vertical={false} />
+              <CartesianGrid stroke={CHART.grid} strokeDasharray="3 3" vertical={false} />
               <XAxis
                 dataKey="label"
-                tick={{ fill: "#94A3B8", fontSize: 11 }}
+                tick={{ fill: CHART.axis, fontSize: 11 }}
                 axisLine={false}
                 tickLine={false}
                 interval="preserveStartEnd"
@@ -86,21 +86,12 @@ export default function AgentActivityChart({ actions }) {
               />
               <YAxis
                 allowDecimals={false}
-                tick={{ fill: "#94A3B8", fontSize: 11 }}
+                tick={{ fill: CHART.axis, fontSize: 11 }}
                 axisLine={false}
                 tickLine={false}
                 width={44}
               />
-              <Tooltip
-                contentStyle={{
-                  background: "#101D2D",
-                  border: "1px solid #253246",
-                  borderRadius: 10,
-                  fontSize: 12,
-                  color: "#F7F8FA",
-                }}
-                labelStyle={{ color: "#94A3B8", marginBottom: 4 }}
-              />
+              <Tooltip contentStyle={CHART.tooltip} labelStyle={CHART.tooltipLabel} />
               {SERIES.map((s) => (
                 <Area
                   key={s.key}
