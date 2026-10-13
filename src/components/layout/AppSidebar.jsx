@@ -1,6 +1,6 @@
 import { NavLink } from "react-router-dom";
 import {
-  LayoutDashboard, Bot, ClipboardCheck, Scale, ScrollText, TrendingUp,
+  LayoutDashboard, Bot, ClipboardCheck, Scale, Plug, ScrollText, TrendingUp,
   FileDown, UserPlus, ScanSearch, Radio, Package, History, Settings2,
   Settings as SettingsIcon, PanelLeftClose, PanelLeftOpen,
 } from "lucide-react";
@@ -16,6 +16,7 @@ const GROUPS = [
       { to: "/passports", label: "AI Agents", icon: Bot },
       { to: "/approvals", label: "Action Review", icon: ClipboardCheck },
       { to: "/policy-manager", label: "Policies", icon: Scale },
+      { to: "/integrations", label: "Integrations", icon: Plug },
     ],
   },
   {

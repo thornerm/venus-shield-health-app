@@ -17,6 +17,8 @@ import AuditTrail from "@/pages/AuditTrail";
 import RegisterAgent from "@/pages/RegisterAgent";
 import PolicyManager from "@/pages/PolicyManager";
 import PolicyDetails from "@/pages/PolicyDetails";
+import Integrations from "@/pages/Integrations";
+import IntegrationDetail from "@/pages/IntegrationDetail";
 import AgentPerformance from "@/pages/AgentPerformance";
 import AccountSettings from "@/pages/AccountSettings";
 import ReportExport from "@/pages/ReportExport";
@@ -64,6 +66,8 @@ const AuthenticatedApp = () => {
         <Route path="/register" element={<RegisterAgent />} />
         <Route path="/policy-manager" element={<PolicyManager />} />
         <Route path="/policy-details/:id" element={<PolicyDetails />} />
+        <Route path="/integrations" element={<Integrations />} />
+        <Route path="/integrations/:system" element={<IntegrationDetail />} />
         <Route path="/agent-performance" element={<AgentPerformance />} />
         <Route path="/account-settings" element={<AccountSettings />} />
         <Route path="/report-export" element={<ReportExport />} />
