@@ -1,7 +1,7 @@
 import { NavLink } from "react-router-dom";
 import {
-  LayoutDashboard, Bot, ClipboardCheck, Scale, Plug, ScrollText, TrendingUp,
-  FileDown, UserPlus, ScanSearch, Radio, Package, History, Settings2,
+  LayoutDashboard, Bot, ClipboardCheck, Scale, Plug, Bell, ScrollText, TrendingUp,
+  FileDown, UserPlus, Users, ScanSearch, Radio, Package, History, Settings2,
   Settings as SettingsIcon, PanelLeftClose, PanelLeftOpen,
 } from "lucide-react";
 import VenusShieldLogo from "@/components/brand/VenusShieldLogo";
@@ -17,6 +17,7 @@ const GROUPS = [
       { to: "/approvals", label: "Action Review", icon: ClipboardCheck },
       { to: "/policy-manager", label: "Policies", icon: Scale },
       { to: "/integrations", label: "Integrations", icon: Plug },
+      { to: "/alerts", label: "Alerts", icon: Bell },
     ],
   },
   {
@@ -44,7 +45,10 @@ const GROUPS = [
     ],
   },
   {
-    items: [{ to: "/account-settings", label: "Settings", icon: SettingsIcon }],
+    items: [
+      { to: "/team", label: "Team", icon: Users },
+      { to: "/account-settings", label: "Settings", icon: SettingsIcon },
+    ],
   },
 ];
 

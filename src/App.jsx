@@ -19,6 +19,8 @@ import PolicyManager from "@/pages/PolicyManager";
 import PolicyDetails from "@/pages/PolicyDetails";
 import Integrations from "@/pages/Integrations";
 import IntegrationDetail from "@/pages/IntegrationDetail";
+import Alerts from "@/pages/Alerts";
+import Team from "@/pages/Team";
 import AgentPerformance from "@/pages/AgentPerformance";
 import AccountSettings from "@/pages/AccountSettings";
 import ReportExport from "@/pages/ReportExport";
@@ -68,6 +70,8 @@ const AuthenticatedApp = () => {
         <Route path="/policy-details/:id" element={<PolicyDetails />} />
         <Route path="/integrations" element={<Integrations />} />
         <Route path="/integrations/:system" element={<IntegrationDetail />} />
+        <Route path="/alerts" element={<Alerts />} />
+        <Route path="/team" element={<Team />} />
         <Route path="/agent-performance" element={<AgentPerformance />} />
         <Route path="/account-settings" element={<AccountSettings />} />
         <Route path="/report-export" element={<ReportExport />} />
