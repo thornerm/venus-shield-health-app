@@ -7,6 +7,10 @@
 //   enforce       — agent runtimes (authenticated by agent API key)
 //   evaluate-ui   — Evaluate Action + AIRTP (authenticated signed-in user)
 // Nothing else may compute a verdict.
+//
+// This module also owns the agent-key credential check (bottom of file), which
+// every endpoint that authenticates an agent key shares — so authorization for
+// the status lookup can never drift from runtime enforcement.
 
 export const UNATTRIBUTED = "Unattributed";
 export const AUTO_ALLOW_ACTOR = "Governance Engine (auto-allow)";
@@ -258,4 +262,57 @@ export function buildActionRecordPayload({ agent, action, result, source, reques
     source,
     requested_via_key: requestedViaKey,
   };
+}
+
+/* ==========================================================================
+   Agent key credentials
+   Shared by enforce, enforce-status and agent-keys.
+   ========================================================================= */
+
+export const KEY_DENIED = "Invalid or revoked API key";
+export const KEY_EXPIRED = "API key expired";
+export const KEY_BAD_EXPIRY = "Invalid key expiration";
+
+export interface KeyRecord {
+  status?: string;
+  expires_at?: string | null;
+}
+
+export type KeyAuthorization =
+  | { authorized: true }
+  | { authorized: false; status: number; error: string };
+
+/**
+ * Decides whether a stored key record authorizes a runtime call.
+ *
+ * Fails closed: a key that is missing, not `active`, or whose expiration cannot
+ * be understood is refused. An `expires_at` left unset (null / undefined / "")
+ * marks a non-expiring key and is allowed.
+ *
+ * `nowMs` is injectable so the expiration boundary can be tested directly.
+ */
+export function evaluateKeyAuthorization(key: KeyRecord | null | undefined, nowMs: number = Date.now()): KeyAuthorization {
+  if (!key || String(key.status || "") !== "active") {
+    return { authorized: false, status: 401, error: KEY_DENIED };
+  }
+
+  const raw = key.expires_at;
+  if (raw === null || raw === undefined || raw === "") return { authorized: true };
+
+  const expiresAt = new Date(raw as string).getTime();
+  if (!Number.isFinite(expiresAt)) {
+    return { authorized: false, status: 401, error: KEY_BAD_EXPIRY };
+  }
+  // Expired, or expiring at exactly this instant.
+  if (expiresAt <= nowMs) {
+    return { authorized: false, status: 401, error: KEY_EXPIRED };
+  }
+
+  return { authorized: true };
+}
+
+/** SHA-256 hex digest — the only form of a key this app stores. */
+export async function hashApiKey(rawKey: string): Promise<string> {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(rawKey));
+  return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }

@@ -8,15 +8,10 @@
 //
 // Direct HTTP calls carry no user context, so the agent authenticates with its
 // own key and every record is attributed to `agent:<agent_id>`, never a person.
+// The key check is shared with the status lookup (evaluateKeyAuthorization).
 
 import { createClientFromRequest } from "npm:@base44/sdk@0.8.52";
-import { evaluateGovernance, buildActionRecordPayload, rows, now } from "../../shared/engine.ts";
-
-const encoder = new TextEncoder();
-async function sha256(s) {
-  const buf = await crypto.subtle.digest("SHA-256", encoder.encode(s));
-  return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
-}
+import { evaluateGovernance, buildActionRecordPayload, evaluateKeyAuthorization, hashApiKey, rows, now } from "../../shared/engine.ts";
 
 const json = (body, status = 200) => Response.json(body, { status });
 const API_VERDICT = { allow: "allow", approval_required: "approval_required", blocked: "block" };
@@ -50,9 +45,9 @@ export default async function (req) {
     const rawKey = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
     if (!rawKey) return json({ error: "Missing Authorization: Bearer <agent api key>" }, 401);
 
-    const key = rows(await db.AgentApiKey.filter({ key_hash: await sha256(rawKey), status: "active" }))[0];
-    if (!key) return json({ error: "Invalid or revoked API key" }, 401);
-    if (key.expires_at && new Date(key.expires_at) <= new Date()) return json({ error: "API key expired" }, 401);
+    const key = rows(await db.AgentApiKey.filter({ key_hash: await hashApiKey(rawKey) }))[0];
+    const authz = evaluateKeyAuthorization(key);
+    if (!authz.authorized) return json({ error: authz.error }, authz.status);
 
     const body = await req.json().catch(() => null);
     if (!body) return json({ error: "Body must be JSON" }, 400);

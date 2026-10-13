@@ -5,15 +5,9 @@
 // once, at creation — only its SHA-256 hash is stored.
 
 import { createClientFromRequest } from "npm:@base44/sdk@0.8.52";
-import { rows, now } from "../../shared/engine.ts";
+import { hashApiKey, rows, now } from "../../shared/engine.ts";
 
 const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-const encoder = new TextEncoder();
-
-async function sha256(s) {
-  const buf = await crypto.subtle.digest("SHA-256", encoder.encode(s));
-  return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
-}
 
 function generateKey() {
   const bytes = new Uint8Array(40);
@@ -74,7 +68,7 @@ export default async function (req) {
         agent_id: agentId,
         label: String(body.label || "").slice(0, 80),
         key_prefix: full.slice(0, 12),
-        key_hash: await sha256(full),
+        key_hash: await hashApiKey(full),
         status: "active",
         created_by: user.email || "",
         last_used_at: null,

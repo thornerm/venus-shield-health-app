@@ -5,15 +5,12 @@
 //   Authorization: Bearer <agent api key>
 //   { evaluation_id }
 //
-// Returns { status: "pending"|"approved"|"denied"|"blocked"|"executed", decided_by, decided_at, reason }
+// The key is checked here exactly as it is at runtime enforcement — an expired,
+// revoked or malformed-expiry key is refused with 401 before any record is read.
 
 import { createClientFromRequest } from "npm:@base44/sdk@0.8.52";
+import { evaluateKeyAuthorization, hashApiKey, rows } from "../../shared/engine.ts";
 
-const encoder = new TextEncoder();
-async function sha256(s) {
-  const buf = await crypto.subtle.digest("SHA-256", encoder.encode(s));
-  return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
-}
 const json = (body, status = 200) => Response.json(body, { status });
 
 const STATUS = {
@@ -34,9 +31,9 @@ export default async function (req) {
     const rawKey = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
     if (!rawKey) return json({ error: "Missing Authorization header" }, 401);
 
-    const keys = await db.AgentApiKey.filter({ key_hash: await sha256(rawKey), status: "active" });
-    const key = (Array.isArray(keys) ? keys : keys?.items || [])[0];
-    if (!key) return json({ error: "Invalid or revoked API key" }, 401);
+    const key = rows(await db.AgentApiKey.filter({ key_hash: await hashApiKey(rawKey) }))[0];
+    const authz = evaluateKeyAuthorization(key);
+    if (!authz.authorized) return json({ error: authz.error }, authz.status);
 
     const body = await req.json().catch(() => ({}));
     if (!body.evaluation_id) return json({ error: "evaluation_id required" }, 400);
