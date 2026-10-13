@@ -90,68 +90,6 @@ export const DEMO_SCENARIOS = [
 const now = () => new Date().toISOString();
 const AUTO_ALLOW_ACTOR = "Governance Engine (auto-allow)";
 
-function isExfiltration(action_type, target_system, params) {
-  const at = (action_type || "").toLowerCase();
-  const ts = (target_system || "").toLowerCase();
-  const ps = JSON.stringify(params || {}).toLowerCase();
-  const hasPII = ["pii", "personal", "customer records", "ssn", "passport", "health", "customer_id"].some((k) => ps.includes(k));
-  const external = ts.includes("external") || ts.includes("unauthorized") || ts.trim() === "";
-  if (at.includes("export") && at.includes("database")) return true;
-  if (at.includes("export") && (external || hasPII)) return true;
-  if (external && hasPII) return true;
-  return false;
-}
-
-function computeBlastRadius({ action_type, target_system, amount_usd, params }) {
-  if (isExfiltration(action_type, target_system, params)) return 5;
-  if (Number(amount_usd || 0) >= 50000) return 4;
-  if (Number(amount_usd || 0) >= 10000) return 3;
-  if (Number(amount_usd || 0) > 0) return 2;
-  return 1;
-}
-
-function reversibilityFor(action_type, blast, exfil) {
-  if (exfil) return "irreversible";
-  const at = (action_type || "").toLowerCase();
-  if (["delete", "drop", "purge", "wipe", "terminate"].some((k) => at.includes(k))) return "irreversible";
-  if (["refund", "payment", "transfer", "disbursement"].some((k) => at.includes(k))) return "partially_reversible";
-  if (blast >= 4) return "partially_reversible";
-  return "reversible";
-}
-
-function policyMatchesFn(policy, action, exfil) {
-  const m = policy.match || {};
-  if (!m || Object.keys(m).length === 0) return false;
-  if (Array.isArray(m.action_types) && !m.action_types.map((x) => String(x).toLowerCase()).includes((action.action_type || "").toLowerCase())) return false;
-  if (Array.isArray(m.target_systems) && !m.target_systems.map((x) => String(x).toLowerCase()).includes((action.target_system || "").toLowerCase())) return false;
-  if (m.exfiltration === true && !exfil) return false;
-  if (m.min_amount != null && Number(action.amount_usd || 0) < Number(m.min_amount)) return false;
-  return true;
-}
-
-/**
- * Conflict resolution across ALL matched policies.
- * Rule: hard prohibitions (blocked) > approval requirements > allow.
- * Returns { decisiveDecision, decisivePolicy, matches }.
- */
-function resolvePolicyConflicts(matched) {
-  const matches = matched
-    .slice()
-    .sort((a, b) => (b.priority || 0) - (a.priority || 0))
-    .map((p) => ({ name: p.name, priority: p.priority, required_decision: p.required_decision }));
-
-  let decisiveDecision = "allow";
-  if (matched.some((p) => p.required_decision === "blocked")) decisiveDecision = "blocked";
-  else if (matched.some((p) => p.required_decision === "approval_required")) decisiveDecision = "approval_required";
-
-  const decisivePolicy =
-    matched.find((p) => p.required_decision === decisiveDecision) ||
-    matched.slice().sort((a, b) => (b.priority || 0) - (a.priority || 0))[0] ||
-    null;
-
-  return { decisiveDecision, decisivePolicy, matches };
-}
-
 /**
  * Core governance engine. Evaluates a proposed agent action against its passport
  * and ALL active policies, writes a full ActionRecord with a step-by-step

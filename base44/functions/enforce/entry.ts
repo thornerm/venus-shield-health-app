@@ -30,6 +30,15 @@ function passportActive(agent) {
   return true;
 }
 
+/** Why a passport is not usable at runtime, in the operator's words. */
+function passportState(agent) {
+  if (agent.is_active === false) return "revoked";
+  const review = String(agent.review_status || "").replace("_", " ");
+  if (review && review !== "reviewed") return review;
+  if (agent.passport_expires_at && new Date(agent.passport_expires_at) <= new Date()) return "expired";
+  return review || "not approved";
+}
+
 export default async function (req) {
   try {
     if (req.method !== "POST") return json({ error: "POST only" }, 405);
@@ -69,7 +78,7 @@ export default async function (req) {
 
     // 2. Only an active (approved) passport may act at runtime.
     if (!passportActive(agent)) {
-      const reason = `Agent passport is ${String(agent.review_status || "not approved").replace("_", " ")}; runtime actions are not permitted until it is active.`;
+      const reason = `Agent passport is ${passportState(agent)}; runtime actions are not permitted until it is active.`;
       const record = await db.ActionRecord.create(buildActionRecordPayload({
         agent, action, source, requestedBy: `agent:${agentId}`, requestedViaKey: key.key_prefix,
         result: {
