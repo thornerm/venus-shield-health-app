@@ -17,9 +17,14 @@ export const ALERT_KINDS = [
   { value: "denied", label: "Denied Actions" },
 ];
 
+/** The final reasoning-trace line, stripped of its trace index and timestamp. */
 function lastReason(record) {
   const reasons = record?.reasons || [];
-  return reasons.length ? String(reasons[reasons.length - 1]) : "";
+  if (!reasons.length) return "";
+  return String(reasons[reasons.length - 1])
+    .replace(/^\s*\d+\.\s*\[[^\]]+\]\s*/, "")
+    .replace(/^DECISION:\s*/i, "")
+    .trim();
 }
 
 /** Passport state worth a human look, or null when the passport is fine. */
