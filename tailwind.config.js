@@ -7,8 +7,13 @@ module.exports = {
   		opacity: Object.fromEntries(Array.from({ length: 101 }, (_, i) => [i, `${i / 100}`])),
   		borderRadius: {
   			lg: 'var(--radius)',
-  			md: 'calc(var(--radius) - 2px)',
-  			sm: 'calc(var(--radius) - 4px)'
+  			md: 'var(--radius-control)',
+  			sm: 'calc(var(--radius-control) - 2px)',
+  			xl: 'var(--radius)'
+  		},
+  		boxShadow: {
+  			soft: '0 1px 2px rgba(2, 6, 16, 0.45), 0 10px 30px -18px rgba(2, 6, 16, 0.9)',
+  			raised: '0 18px 44px -22px rgba(2, 6, 16, 0.95)'
   		},
   		colors: {
   			background: 'hsl(var(--background))',
@@ -40,6 +45,15 @@ module.exports = {
   			destructive: {
   				DEFAULT: 'hsl(var(--destructive))',
   				foreground: 'hsl(var(--destructive-foreground))'
+  			},
+  			gold: {
+  				DEFAULT: 'hsl(var(--gold))',
+  				soft: 'hsl(var(--gold-soft))'
+  			},
+  			surface: 'hsl(var(--surface))',
+  			info: {
+  				DEFAULT: 'hsl(var(--info))',
+  				foreground: 'hsl(var(--info-foreground))'
   			},
   			allow: {
   				DEFAULT: 'hsl(var(--allow))',

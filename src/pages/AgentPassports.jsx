@@ -1,125 +1,197 @@
 import { useEffect, useState, useMemo } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import AutonomyBadge from "@/components/AutonomyBadge";
-import { Search, ShieldCheck, DollarSign, Database, RefreshCw, ArrowRight, Activity } from "lucide-react";
-import { fmtDate, approvalExpirationStatus } from "@/lib/metrics";
+import { RiskBadge } from "@/components/VerdictBadge";
+import { riskForAgent } from "@/lib/governance";
+import { ageLabel } from "@/lib/metrics";
+import { Search, RefreshCw, UserPlus, Bot, ArrowRight, ShieldCheck } from "lucide-react";
+import { cn } from "@/lib/utils";
 
-const REVIEW_LABELS = {
-  pending_review: { label: "Pending review", cls: "bg-review/10 text-review" },
-  reviewed: { label: "Reviewed", cls: "bg-allow/10 text-allow" },
-  needs_attention: { label: "Needs attention", cls: "bg-blocked/10 text-blocked" },
-  expired: { label: "Expired", cls: "bg-blocked/10 text-blocked" },
-};
-const HEALTH_LABELS = {
-  healthy: { label: "Healthy", cls: "bg-allow/10 text-allow" },
-  degraded: { label: "Degraded", cls: "bg-review/10 text-review" },
-  offline: { label: "Offline", cls: "bg-blocked/10 text-blocked" },
-  unknown: { label: "Unknown", cls: "bg-muted text-muted-foreground" },
-};
-
-function Chip({ children, tone = "default" }) {
-  const cls = tone === "ban" ? "bg-blocked/10 text-blocked" : "bg-muted text-muted-foreground";
-  return <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ${cls}`}>{children}</span>;
+/** Presentational status derived from the passport's real review + active state. */
+function agentStatus(ag) {
+  if (ag.is_active === false) {
+    return { label: "Revoked", cls: "border-border bg-muted text-muted-foreground", dot: "bg-muted-foreground" };
+  }
+  const rs = ag.review_status || "pending_review";
+  if (rs === "needs_attention" || rs === "expired") {
+    return { label: "Restricted", cls: "border-blocked/30 bg-blocked/10 text-blocked", dot: "bg-blocked" };
+  }
+  if (rs === "pending_review") {
+    return { label: "Under Review", cls: "border-review/30 bg-review/10 text-review", dot: "bg-review" };
+  }
+  return { label: "Active", cls: "border-allow/30 bg-allow/10 text-allow", dot: "bg-allow" };
 }
 
 export default function AgentPassports() {
   const [agents, setAgents] = useState([]);
+  const [actions, setActions] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [q, setQ] = useState("");
+  const [searchParams] = useSearchParams();
+  const urlQ = searchParams.get("q") || "";
+  const [q, setQ] = useState(urlQ);
+  const navigate = useNavigate();
 
   const load = async () => {
     setLoading(true);
-    const a = await base44.entities.ShieldAgent.list();
+    const [a, ar] = await Promise.all([
+      base44.entities.ShieldAgent.list(),
+      base44.entities.ActionRecord.list("-created_date", 500),
+    ]);
     setAgents(a || []);
+    setActions(ar || []);
     setLoading(false);
   };
   useEffect(() => { load(); }, []);
 
+  // Re-sync when the top-bar search hands over a new term while already here.
+  useEffect(() => { setQ(urlQ); }, [urlQ]);
+
+  const lastActivity = useMemo(() => {
+    const m = new Map();
+    for (const a of actions) {
+      const t = new Date(a.created_date || 0).getTime();
+      if (isNaN(t)) continue;
+      if (!m.has(a.agent_id) || t > m.get(a.agent_id)) m.set(a.agent_id, t);
+    }
+    return m;
+  }, [actions]);
+
   const filtered = useMemo(() => {
     const term = q.trim().toLowerCase();
     if (!term) return agents;
-    return agents.filter((ag) => [ag.name, ag.agent_id, ag.owner_name, ag.owner_email, ag.purpose, ...(ag.systems || [])].join(" ").toLowerCase().includes(term));
+    return agents.filter((ag) =>
+      [ag.name, ag.agent_id, ag.owner_name, ag.owner_email, ag.purpose, ...(ag.systems || [])]
+        .join(" ")
+        .toLowerCase()
+        .includes(term)
+    );
   }, [agents, q]);
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="font-heading text-2xl font-bold tracking-tight">Agent Passports</h1>
-          <p className="text-sm text-muted-foreground">Registered agents and their governance boundaries. Open a passport for version history, grants, and runtime health.</p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="min-w-0">
+          <h1 className="font-heading text-[26px] font-bold tracking-tight text-foreground sm:text-[30px]">AI Agents</h1>
+          <p className="mt-1.5 max-w-2xl text-sm text-muted-foreground">
+            Manage and monitor AI agents operating across your organization.
+          </p>
         </div>
-        <Button variant="outline" size="sm" onClick={load} disabled={loading}>
-          <RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} /> Refresh
-        </Button>
+        <div className="flex shrink-0 items-center gap-2.5">
+          <Button asChild size="sm">
+            <Link to="/register"><UserPlus className="mr-2 h-4 w-4" />New Agent</Link>
+          </Button>
+          <Button variant="outline" size="sm" onClick={load} disabled={loading}>
+            <RefreshCw className={cn("mr-2 h-4 w-4", loading && "animate-spin")} />
+            Refresh
+          </Button>
+        </div>
       </div>
 
       <div className="relative max-w-md">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="Search by name, ID, owner, system…"
-          className="h-9 w-full rounded-md border border-input bg-transparent pl-9 pr-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          className="h-9 w-full rounded-md border border-input bg-surface/50 pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground transition-colors duration-200 focus-visible:border-primary/60 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
         />
       </div>
 
-      {loading ? (
-        <div className="py-16 text-center text-sm text-muted-foreground">Loading passports…</div>
-      ) : filtered.length === 0 ? (
-        <Card><CardContent className="py-16 text-center text-sm text-muted-foreground">{agents.length === 0 ? "No agent passports provisioned yet." : "No passports match your search."}</CardContent></Card>
-      ) : (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {filtered.map((ag) => {
-            const rs = REVIEW_LABELS[ag.review_status || "pending_review"] || REVIEW_LABELS.pending_review;
-            const hs = HEALTH_LABELS[ag.runtime_health || "unknown"] || HEALTH_LABELS.unknown;
-            const exp = approvalExpirationStatus(ag.passport_expires_at);
-            const expCls = exp.tone === "blocked" ? "bg-blocked/10 text-blocked" : exp.tone === "review" ? "bg-review/10 text-review" : "bg-muted text-muted-foreground";
-            return (
-              <Link key={ag.id} to={`/passports/${ag.id}`} className="block">
-                <Card className="flex h-full flex-col transition-shadow hover:shadow-md">
-                  <CardHeader>
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-center gap-2.5">
-                        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary"><ShieldCheck className="h-5 w-5" /></div>
-                        <div>
-                          <CardTitle className="text-base">{ag.name}</CardTitle>
-                          <CardDescription className="text-xs">{ag.agent_id}</CardDescription>
+      <div className="vs-card overflow-hidden">
+        {loading ? (
+          <div className="space-y-3 p-5">
+            {[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-14 w-full rounded-md bg-muted/60" />)}
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="flex flex-col items-center justify-center gap-3 px-6 py-16 text-center">
+            <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-muted">
+              <Bot className="h-5 w-5 text-muted-foreground" />
+            </div>
+            <div className="text-sm font-medium text-foreground">
+              {agents.length === 0 ? "No agent passports provisioned yet." : "No agents match your search."}
+            </div>
+            {agents.length === 0 && (
+              <Button asChild size="sm" variant="outline">
+                <Link to="/register">Register the first agent</Link>
+              </Button>
+            )}
+          </div>
+        ) : (
+          <div className="vs-scroll overflow-x-auto">
+            <table className="w-full min-w-[880px] border-collapse text-sm">
+              <thead>
+                <tr className="border-b border-border">
+                  {["Agent", "Purpose", "Status", "Risk", "Last activity", ""].map((h, i) => (
+                    <th
+                      key={h || i}
+                      className={cn(
+                        "px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground",
+                        i === 5 && "text-right"
+                      )}
+                    >
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((ag) => {
+                  const st = agentStatus(ag);
+                  const risk = riskForAgent(ag, actions);
+                  const last = lastActivity.get(ag.agent_id);
+                  return (
+                    <tr
+                      key={ag.id}
+                      onClick={() => navigate(`/passports/${ag.id}`)}
+                      className="cursor-pointer border-b border-border transition-colors duration-200 last:border-b-0 hover:bg-surface/50"
+                    >
+                      <td className="px-5 py-3.5">
+                        <div className="flex items-center gap-3">
+                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-border bg-surface/60">
+                            <ShieldCheck className="h-4 w-4 text-primary" />
+                          </span>
+                          <div className="min-w-0">
+                            <div className="truncate font-medium text-foreground">{ag.name}</div>
+                            <div className="truncate text-xs text-muted-foreground">{ag.agent_id}</div>
+                          </div>
                         </div>
-                      </div>
-                      <AutonomyBadge level={ag.autonomy_level} />
-                    </div>
-                  </CardHeader>
-                  <CardContent className="flex-1 space-y-3 text-sm">
-                    <p className="line-clamp-2 text-muted-foreground">{ag.purpose}</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${rs.cls}`}>{rs.label}</span>
-                      <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${hs.cls}`}><Activity className="h-3 w-3" />{hs.label}</span>
-                      {ag.passport_expires_at && <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${expCls}`}>Exp {fmtDate(ag.passport_expires_at).split(",")[0]}</span>}
-                      {!ag.is_active && <span className="inline-flex rounded-full bg-blocked/10 px-2 py-0.5 text-xs font-medium text-blocked">Revoked</span>}
-                    </div>
-                    <div>
-                      <div className="mb-1 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground"><Database className="h-3 w-3" /> Systems</div>
-                      <div className="flex flex-wrap gap-1.5">
-                        {(ag.systems || []).length ? ag.systems.map((s) => <Chip key={s}>{s}</Chip>) : <span className="text-xs text-muted-foreground">none</span>}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 text-xs">
-                      <DollarSign className="h-3.5 w-3.5 text-muted-foreground" />
-                      <span className="text-muted-foreground">Limit</span>
-                      <span className="ml-auto font-medium">${Number(ag.financial_limit_usd || 0).toLocaleString()}</span>
-                    </div>
-                    <div className="border-t border-border pt-2 text-xs text-muted-foreground">Owner: {ag.owner_name} · {ag.owner_email}</div>
-                    <div className="flex items-center justify-end gap-1 text-xs font-medium text-primary">View details <ArrowRight className="h-3 w-3" /></div>
-                  </CardContent>
-                </Card>
-              </Link>
-            );
-          })}
-        </div>
-      )}
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <div className="max-w-[280px] truncate text-[13px] text-muted-foreground">{ag.purpose || "—"}</div>
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <div className="flex flex-col items-start gap-1.5">
+                          <span className={cn("inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium", st.cls)}>
+                            <span className={cn("h-1.5 w-1.5 rounded-full", st.dot)} />
+                            {st.label}
+                          </span>
+                          <AutonomyBadge level={ag.autonomy_level} />
+                        </div>
+                      </td>
+                      <td className="px-5 py-3.5"><RiskBadge level={risk.level} /></td>
+                      <td className="px-5 py-3.5 text-[13px] text-muted-foreground">
+                        {last ? ageLabel(new Date(last).toISOString()) : <span className="text-muted-foreground/70">No activity</span>}
+                      </td>
+                      <td className="px-5 py-3.5 text-right">
+                        <Link
+                          to={`/passports/${ag.id}`}
+                          onClick={(e) => e.stopPropagation()}
+                          className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+                        >
+                          View <ArrowRight className="h-3 w-3" />
+                        </Link>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

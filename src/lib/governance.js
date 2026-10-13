@@ -20,9 +20,9 @@ export const AUTONOMY_DEFINITIONS = {
 export const AUTONOMY_RANK = { full: 3, standard: 2, restricted: 1 };
 
 export const AUTONOMY_BADGE_CLASS = {
-  full: "bg-blue-50 text-blue-700 border-blue-200",
-  standard: "bg-slate-100 text-slate-700 border-slate-200",
-  restricted: "bg-amber-50 text-amber-700 border-amber-200",
+  full: "bg-info/10 text-info border-info/30",
+  standard: "bg-muted text-muted-foreground border-border",
+  restricted: "bg-review/10 text-review border-review/30",
 };
 
 export const DECISION_META = {

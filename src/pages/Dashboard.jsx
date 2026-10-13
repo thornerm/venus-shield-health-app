@@ -3,15 +3,52 @@ import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
-import StatTile from "@/components/StatTile";
 import AutonomyBadge from "@/components/AutonomyBadge";
 import FilterBar from "@/components/FilterBar";
 import DefinitionTooltip from "@/components/DefinitionTooltip";
 import { RiskBadge } from "@/components/VerdictBadge";
+import DashboardHero from "@/components/dashboard/DashboardHero";
+import MetricCard, { TrendPill } from "@/components/dashboard/MetricCard";
+import AgentActivityChart from "@/components/dashboard/AgentActivityChart";
+import RecentActionsPanel from "@/components/dashboard/RecentActionsPanel";
+import RiskOverview from "@/components/dashboard/RiskOverview";
+import DecisionSummary from "@/components/dashboard/DecisionSummary";
 import { riskForAgent } from "@/lib/governance";
-import { verdictCounts, statusCounts, requestStatusCounts, applyFilters, freshnessLabel, firstPassAllowRate, METRIC_DEFINITIONS } from "@/lib/metrics";
-import { Users, ClipboardCheck, Ban, AlertTriangle, RefreshCw, ShieldCheck, Activity } from "lucide-react";
+import {
+  verdictCounts, statusCounts, requestStatusCounts, applyFilters,
+  freshnessLabel, firstPassAllowRate, METRIC_DEFINITIONS,
+} from "@/lib/metrics";
+import { Bot, Activity, Ban, ClipboardCheck } from "lucide-react";
+
+const TREND_DAYS = 7;
+
+function windowTrend(records) {
+  const now = Date.now();
+  let cur = 0;
+  let prev = 0;
+  for (const r of records) {
+    const t = new Date(r.created_date || 0).getTime();
+    if (isNaN(t)) continue;
+    const ageDays = (now - t) / 86400000;
+    if (ageDays < TREND_DAYS) cur++;
+    else if (ageDays < TREND_DAYS * 2) prev++;
+  }
+  return { cur, prev };
+}
+
+/** Renders a real 7-day comparison, or a plain count when no prior window exists. */
+function WindowTrend({ records, upTone = "muted", downTone = "muted" }) {
+  const { cur, prev } = windowTrend(records);
+  if (!cur && !prev) return null;
+  if (!prev) return <TrendPill tone="muted" icon="flat">{cur} in last 7d</TrendPill>;
+  const pct = Math.round(((cur - prev) / prev) * 100);
+  const up = cur >= prev;
+  return (
+    <TrendPill tone={up ? upTone : downTone} icon={up ? "up" : "down"}>
+      {pct > 0 ? "+" : ""}{pct}% vs prior 7d
+    </TrendPill>
+  );
+}
 
 export default function Dashboard() {
   const [agents, setAgents] = useState([]);
@@ -44,75 +81,71 @@ export default function Dashboard() {
   const fpr = firstPassAllowRate(fActions);
 
   const monitoredIds = useMemo(() => new Set(fActions.map((a) => a.agent_id)), [fActions]);
+  const blockedActions = useMemo(() => fActions.filter((a) => a.decision === "blocked"), [fActions]);
   const highRisk = agents.filter((ag) => riskForAgent(ag, fActions).level === "high").length;
+  const activeAgents = agents.filter((ag) => ag.is_active !== false).length;
   const pendingReviewAgentIds = new Set(fRequests.filter((r) => r.status === "pending").map((r) => r.agent_id));
   const freshness = freshnessLabel(fActions);
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="font-heading text-2xl font-bold tracking-tight">Governance Dashboard</h1>
-          <p className="text-sm text-muted-foreground">Real-time posture across all governed AI agents. Verdicts and workflow status are shown separately so totals reconcile.</p>
-        </div>
-        <Button variant="outline" size="sm" onClick={load} disabled={loading}>
-          <RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} /> Refresh
-        </Button>
+      <DashboardHero onRefresh={load} loading={loading} />
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <MetricCard
+          label="Active Agents"
+          value={activeAgents}
+          icon={Bot}
+          tone="blue"
+          hint={`${monitoredIds.size} with recorded activity`}
+        />
+        <MetricCard
+          label="Actions Monitored"
+          value={v.total}
+          icon={Activity}
+          tone="gold"
+          trend={<WindowTrend records={fActions} upTone="muted" downTone="muted" />}
+        />
+        <MetricCard
+          label="Blocked Actions"
+          value={v.blocked}
+          icon={Ban}
+          tone="red"
+          trend={<WindowTrend records={blockedActions} upTone="blocked" downTone="allow" />}
+        />
+        <MetricCard
+          label="Pending Reviews"
+          value={rs.pending + s.pending_approval}
+          icon={ClipboardCheck}
+          tone="amber"
+          to="/approvals"
+          hint={`${rs.pending} agent · ${s.pending_approval} action`}
+        />
       </div>
 
       <FilterBar env={env} setEnv={setEnv} range={range} setRange={setRange} freshness={freshness} />
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Verdicts <span className="text-xs font-normal text-muted-foreground">(governance decision · {v.total} evaluations)</span></CardTitle>
-          <CardDescription>What the engine decided on each evaluated action. These sum to {v.total}.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-            <StatTile label="Allow" value={v.allow} icon={ShieldCheck} tone="green" hint="permitted on first pass" />
-            <StatTile label="Approval Required" value={v.approval_required} icon={ClipboardCheck} tone="amber" hint="held for review" />
-            <StatTile label="Blocked" value={v.blocked} icon={Ban} tone="red" hint="hard prohibition" />
-            <div className="rounded-lg border border-border bg-card p-4">
-              <DefinitionTooltip term="First-pass Allow Rate">{METRIC_DEFINITIONS.firstPassAllowRate}</DefinitionTooltip>
-              <div className="mt-2 font-heading text-3xl font-bold text-allow">{fpr == null ? "Unknown" : `${fpr}%`}</div>
-              <div className="mt-1 text-xs text-muted-foreground">of {v.total} evaluations</div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
+        <div className="xl:col-span-2">
+          <AgentActivityChart actions={fActions} />
+        </div>
+        <RiskOverview agents={agents} actions={fActions} />
+      </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Workflow Status <span className="text-xs font-normal text-muted-foreground">(lifecycle state)</span></CardTitle>
-          <CardDescription>Where each action sits in its lifecycle. Pending and denied are represented here, separate from verdicts.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
-            <StatTile label="Executed" value={s.executed} icon={Activity} tone="green" />
-            <StatTile label="Pending Approval" value={s.pending_approval} icon={ClipboardCheck} tone="amber" />
-            <StatTile label="Approved" value={s.approved} icon={ShieldCheck} tone="green" />
-            <StatTile label="Denied" value={s.denied} icon={Ban} tone="red" />
-            <StatTile label="Blocked" value={s.blocked} icon={Ban} tone="red" />
-          </div>
-          <div className="mt-3 text-xs text-muted-foreground">
-            Approval requests: {rs.pending} pending · {rs.approved} approved · {rs.denied} denied
-          </div>
-        </CardContent>
-      </Card>
-
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <StatTile label="Registered Passports" value={agents.length} icon={Users} tone="blue" hint="provisioned in registry" />
-        <StatTile label="Monitored Agents" value={monitoredIds.size} icon={Activity} tone="blue" hint="with ≥1 evaluated action" />
-        <StatTile label="Pending Reviews" value={rs.pending + s.pending_approval} icon={ClipboardCheck} tone="amber" hint={`${rs.pending} agent · ${s.pending_approval} action`} />
-        <StatTile label="High-Risk Agents" value={highRisk} icon={AlertTriangle} tone="red" hint="blocked actions on record" />
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
+        <div className="xl:col-span-2">
+          <RecentActionsPanel actions={fActions} />
+        </div>
+        <DecisionSummary verdicts={v} statuses={s} requests={rs} firstPassRate={fpr} />
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Agent Risk Posture</CardTitle>
+          <CardTitle className="text-[15px]">Agent Risk Posture</CardTitle>
           <CardDescription className="flex items-center gap-2">
             <DefinitionTooltip term="Risk">{METRIC_DEFINITIONS.observedBehavior} {METRIC_DEFINITIONS.protectiveControls}</DefinitionTooltip>
           </CardDescription>
+          <p className="text-xs text-muted-foreground">{highRisk} agent{highRisk === 1 ? "" : "s"} currently assessed as high risk.</p>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -120,10 +153,10 @@ export default function Dashboard() {
           ) : agents.length === 0 ? (
             <div className="py-10 text-center text-sm text-muted-foreground">No agents registered yet.</div>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="vs-scroll -mx-6 overflow-x-auto px-6">
               <Table>
                 <TableHeader>
-                  <TableRow>
+                  <TableRow className="border-border hover:bg-transparent">
                     <TableHead>Agent</TableHead>
                     <TableHead>Review Status</TableHead>
                     <TableHead>Autonomy</TableHead>
@@ -137,19 +170,19 @@ export default function Dashboard() {
                     const risk = riskForAgent(ag, fActions);
                     const monitored = monitoredIds.has(ag.agent_id);
                     return (
-                      <TableRow key={ag.id}>
+                      <TableRow key={ag.id} className="border-border">
                         <TableCell>
                           <div className="flex items-center gap-1.5">
-                            <Link to={`/passports/${ag.id}`} className="font-medium hover:underline">{ag.name}</Link>
+                            <Link to={`/passports/${ag.id}`} className="font-medium text-foreground hover:text-primary hover:underline">{ag.name}</Link>
                             {!monitored && <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">no activity</span>}
                           </div>
                           <div className="text-xs text-muted-foreground">{ag.agent_id}</div>
                         </TableCell>
                         <TableCell>
                           {pendingReviewAgentIds.has(ag.agent_id) ? (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-review/10 px-2 py-0.5 text-xs font-medium text-review">Pending review</span>
+                            <span className="inline-flex items-center gap-1 rounded-full border border-review/30 bg-review/10 px-2 py-0.5 text-xs font-medium text-review">Pending review</span>
                           ) : (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-allow/10 px-2 py-0.5 text-xs font-medium text-allow">Cleared</span>
+                            <span className="inline-flex items-center gap-1 rounded-full border border-allow/30 bg-allow/10 px-2 py-0.5 text-xs font-medium text-allow">Cleared</span>
                           )}
                         </TableCell>
                         <TableCell><AutonomyBadge level={ag.autonomy_level} /></TableCell>
@@ -170,6 +203,7 @@ export default function Dashboard() {
           )}
         </CardContent>
       </Card>
+
     </div>
   );
 }
