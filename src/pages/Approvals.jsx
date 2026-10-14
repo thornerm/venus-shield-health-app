@@ -78,12 +78,30 @@ export default function Approvals() {
     return "";
   };
 
-  const run = async (fn, id) => {
+  // The outcome of a decision is known as soon as the server confirms it, so the
+  // queue is updated from that outcome right away — the counters never wait on a
+  // fresh count, and the refresh that follows reconciles with the stored records.
+  const recordDecision = ({ kind, item, outcome }) => {
+    if (kind === "agent") {
+      setRequests((prev) => prev.filter((r) => r.id !== item.id));
+      return;
+    }
+    setCounts((prev) => ({
+      ...prev,
+      pending_approval: Math.max(0, (prev.pending_approval ?? 0) - 1),
+      [outcome]: (prev[outcome] ?? 0) + 1,
+    }));
+  };
+
+  const run = async (fn, id, decision) => {
     setBusy(id); setError("");
+    let recorded = false;
     try {
       const res = await fn();
       if (res?.ok === false) setError(res.error || "Action failed.");
+      else recorded = true;
     } catch (e) { setError(e?.message || "Action failed."); }
+    if (recorded && decision) recordDecision(decision);
     setBusy("");
     setReview(null);
     refresh();
@@ -93,15 +111,17 @@ export default function Approvals() {
     if (!review) return;
     if (!canDecide()) { setError("Only a governance admin can approve or deny."); return; }
     const { kind, item } = review;
-    if (kind === "agent") run(() => approveAgentRequest(item.id, actor, reason), item.id);
-    else run(() => approveAction(item.id, actor, reason), item.id);
+    const decision = { kind, item, outcome: "approved" };
+    if (kind === "agent") run(() => approveAgentRequest(item.id, actor, reason), item.id, decision);
+    else run(() => approveAction(item.id, actor, reason), item.id, decision);
   };
   const handleDeny = (reason) => {
     if (!review) return;
     if (!canDecide()) { setError("Only a governance admin can approve or deny."); return; }
     const { kind, item } = review;
-    if (kind === "agent") run(() => denyAgentRequest(item.id, actor, reason), item.id);
-    else run(() => denyAction(item.id, actor, reason), item.id);
+    const decision = { kind, item, outcome: "denied" };
+    if (kind === "agent") run(() => denyAgentRequest(item.id, actor, reason), item.id, decision);
+    else run(() => denyAction(item.id, actor, reason), item.id, decision);
   };
 
   const openAgent = (item, intent) => setReview({ kind: "agent", item, intent });
