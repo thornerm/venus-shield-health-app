@@ -2,7 +2,7 @@ import { NavLink } from "react-router-dom";
 import {
   LayoutDashboard, Bot, ClipboardCheck, Scale, Plug, Bell, ScrollText, TrendingUp,
   FileDown, UserPlus, Users, ScanSearch, Radio, Package, History, Settings2,
-  Settings as SettingsIcon, PanelLeftClose, PanelLeftOpen,
+  Settings as SettingsIcon, PanelLeftClose, PanelLeftOpen, BookOpen,
 } from "lucide-react";
 import VenusShieldLogo from "@/components/brand/VenusShieldLogo";
 import { cn } from "@/lib/utils";
@@ -42,6 +42,12 @@ const GROUPS = [
       { to: "/orchestration", label: "Prompt Catalog", icon: Package, end: true },
       { to: "/orchestration/history", label: "Executions", icon: History },
       { to: "/orchestration/setup", label: "Customer Setup", icon: Settings2 },
+    ],
+  },
+  {
+    label: "Resources",
+    items: [
+      { to: "/devops-handbook", label: "DevOps Handbook", icon: BookOpen },
     ],
   },
   {

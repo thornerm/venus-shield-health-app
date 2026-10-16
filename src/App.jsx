@@ -30,6 +30,7 @@ import PromptBuilder from "@/pages/orchestration/PromptBuilder";
 import CustomerSetup from "@/pages/orchestration/CustomerSetup";
 import JobRunner from "@/pages/orchestration/JobRunner";
 import ExecutionHistory from "@/pages/orchestration/ExecutionHistory";
+import DevOpsHandbook from "@/pages/DevOpsHandbook";
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -80,6 +81,7 @@ const AuthenticatedApp = () => {
         <Route path="/orchestration/setup" element={<CustomerSetup />} />
         <Route path="/orchestration/run/:id" element={<JobRunner />} />
         <Route path="/orchestration/history" element={<ExecutionHistory />} />
+        <Route path="/devops-handbook" element={<DevOpsHandbook />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>
