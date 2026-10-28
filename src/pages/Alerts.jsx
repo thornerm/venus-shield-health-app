@@ -7,6 +7,7 @@ import StatTile from "@/components/StatTile";
 import TabBar from "@/components/TabBar";
 import AlertItem from "@/components/alerts/AlertItem";
 import AlertTable from "@/components/alerts/AlertTable";
+import ViolationTrends from "@/components/alerts/ViolationTrends";
 import SkeletonRows from "@/components/SkeletonRows";
 import { ALERT_KINDS, deriveAlerts } from "@/lib/alerts";
 import { Ban, AlertTriangle, ShieldAlert, Bell, Search, RefreshCw, List, LayoutGrid } from "lucide-react";
@@ -82,6 +83,8 @@ export default function Alerts() {
         <StatTile label="Medium" value={bySeverity.medium} icon={Bell} tone="amber" hint="held for a human decision" />
         <StatTile label="Low" value={bySeverity.low} icon={ShieldAlert} tone="blue" hint="passport housekeeping" />
       </div>
+
+      <ViolationTrends actions={actions} loading={loading} />
 
       <div className="relative max-w-md">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
