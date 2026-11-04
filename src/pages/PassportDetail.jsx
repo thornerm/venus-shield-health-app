@@ -7,6 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { VerdictBadge, StatusBadge } from "@/components/VerdictBadge";
 import AutonomyBadge from "@/components/AutonomyBadge";
 import { revokeAgent, renewAgent, FINANCIAL_LIMIT_MODES } from "@/lib/governance";
+import ModificationRequestCard from "@/components/passport/ModificationRequestCard";
 import RuntimeAccessCard from "@/components/passport/RuntimeAccessCard";
 import { useAuth } from "@/lib/AuthContext";
 import { fmtDate, ageLabel } from "@/lib/metrics";
@@ -26,7 +27,7 @@ export default function PassportDetail() {
   const [reason, setReason] = useState("");
 
   const load = async () => {
-    setLoading(true);
+    if (!agent || agent.id !== id) setLoading(true);
     try {
       const ag = await base44.entities.ShieldAgent.get(id);
       setAgent(ag);
@@ -120,6 +121,8 @@ export default function PassportDetail() {
           <div><span className="text-muted-foreground">Data permissions:</span> {(agent.data_permissions || []).join(", ") || "none"}</div>
         </CardContent>
       </Card>
+
+      <ModificationRequestCard agent={agent} user={user} onSubmitted={load} />
 
       {isAdmin && (
         <Card>
