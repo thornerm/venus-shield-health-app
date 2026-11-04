@@ -7,6 +7,7 @@ import PageHeader from "@/components/PageHeader";
 import Panel from "@/components/Panel";
 import TabBar from "@/components/TabBar";
 import ReviewPanel from "@/components/ReviewPanel";
+import BulkApprovalBar from "@/components/BulkApprovalBar";
 import { approveAgentRequest, denyAgentRequest, approveAction, denyAction } from "@/lib/governance";
 import { useAuth } from "@/lib/AuthContext";
 import { displayUid, ageLabel, fmtDate, deadlineStatus, approvalExpirationStatus } from "@/lib/metrics";
@@ -36,6 +37,8 @@ export default function Approvals() {
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
   const [review, setReview] = useState(null);
+  const [selected, setSelected] = useState([]);
+  const [bulkBusy, setBulkBusy] = useState(false);
 
   const loadQueue = async () => {
     setQueueLoading(true);
@@ -122,6 +125,26 @@ export default function Approvals() {
     const decision = { kind, item, outcome: "denied" };
     if (kind === "agent") run(() => denyAgentRequest(item.id, actor, reason), item.id, decision);
     else run(() => denyAction(item.id, actor, reason), item.id, decision);
+  };
+
+  const eligible = requests.filter(canApproveAgent);
+  const selectedReqs = eligible.filter((r) => selected.includes(r.id));
+  const allSelected = eligible.length > 0 && selectedReqs.length === eligible.length;
+  const toggle = (id) => setSelected((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
+
+  const bulkApprove = async (reason) => {
+    if (!canDecide()) { setError("Only a governance admin can approve or deny."); return; }
+    setBulkBusy(true); setError("");
+    const failures = [];
+    for (const r of selectedReqs) {
+      try {
+        const res = await approveAgentRequest(r.id, actor, reason);
+        if (res?.ok === false) failures.push(`${r.name}: ${res.error}`);
+        else recordDecision({ kind: "agent", item: r, outcome: "approved" });
+      } catch (e) { failures.push(`${r.name}: ${e?.message || "failed"}`); }
+    }
+    if (failures.length) setError(failures.join(" · "));
+    setSelected([]); setBulkBusy(false); refresh();
   };
 
   const openAgent = (item, intent) => setReview({ kind: "agent", item, intent });
@@ -270,12 +293,29 @@ export default function Approvals() {
         ) : requests.length === 0 ? (
           <div className="py-8 text-center text-sm text-muted-foreground">No pending agent requests.</div>
         ) : (
+<>
+          <BulkApprovalBar count={selectedReqs.length} busy={bulkBusy} onApprove={bulkApprove} />
+          {eligible.length > 0 && (
+            <label className="mb-3 flex items-center gap-2 text-xs text-muted-foreground">
+              <input type="checkbox" className="h-4 w-4 accent-[#D4AF37]" checked={allSelected} onChange={() => setSelected(allSelected ? [] : eligible.map((r) => r.id))} />
+              Select all ({eligible.length})
+            </label>
+          )}
           <div className="divide-y divide-border">
             {requests.map((r) => {
               const dl = deadlineStatus(r.deadline);
               return (
                 <div key={r.id} className="flex flex-wrap items-start justify-between gap-3 py-3.5 first:pt-0 last:pb-0">
-                  <div className="min-w-0 space-y-1.5">
+                  <input
+                    type="checkbox"
+                    aria-label={`Select ${r.name}`}
+                    className="mt-1 h-4 w-4 accent-[#D4AF37] disabled:opacity-30"
+                    disabled={!canApproveAgent(r)}
+                    title={canApproveAgent(r) ? "" : cannotReason("agent", r)}
+                    checked={selected.includes(r.id)}
+                    onChange={() => toggle(r.id)}
+                  />
+                  <div className="min-w-0 flex-1 space-y-1.5">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="font-mono text-[10px] text-muted-foreground">{displayUid(r, "REQ")}</span>
                       <span className="text-[15px] font-medium text-foreground">{r.name}</span>
@@ -296,6 +336,7 @@ export default function Approvals() {
               );
             })}
           </div>
+</>
         )}
       </Panel>
 

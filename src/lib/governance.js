@@ -152,6 +152,30 @@ export async function approveAgentRequest(requestId, actor, reasonText = "") {
   if (req.status !== "pending") return { ok: false, error: `This request is already ${req.status}. Stale decisions are rejected.` };
   const decidedBy = actor?.display || UNATTRIBUTED;
   const history = [...(req.decision_history || []), { actor: decidedBy, action: "approved", reason: reasonText || "Approved.", timestamp: now() }];
+  if (req.request_type === "modified_passport") {
+    const existing = (await base44.entities.ShieldAgent.filter({ agent_id: req.agent_id }))?.[0];
+    if (!existing) return { ok: false, error: `Agent ${req.agent_id} no longer exists.` };
+    const newVersion = (existing.passport_version || 1) + 1;
+    const updated = await base44.entities.ShieldAgent.update(existing.id, {
+      systems: req.systems || [],
+      financial_limit_usd: req.financial_limit_usd || 0,
+      financial_limit_mode: req.financial_limit_mode || "approval_threshold",
+      autonomy_level: req.autonomy_level || existing.autonomy_level,
+      prohibited_actions: req.prohibited_actions || [],
+      data_permissions: req.data_permissions || [],
+      passport_version: newVersion,
+      version_history: [...(existing.version_history || []), { version: newVersion, changed_by: decidedBy, changed_at: now(), summary: `Passport modified on approval of ${req.request_uid || requestId}.` }],
+    });
+    await base44.entities.AgentApprovalRequest.update(requestId, {
+      status: "approved",
+      decided_by: decidedBy,
+      decided_date: now(),
+      resulting_agent_record_id: existing.id,
+      decision_history: history,
+      reasons: [...(req.reasons || []), `Approved by ${decidedBy} on ${now()}${reasonText ? ": " + reasonText : ". Passport updated."}`],
+    });
+    return { ok: true, agent: updated, request: req };
+  }
   const agent = await base44.entities.ShieldAgent.create({
     agent_id: req.agent_id,
     name: req.name,
