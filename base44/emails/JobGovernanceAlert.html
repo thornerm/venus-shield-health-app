@@ -1,0 +1,40 @@
+<mjml>
+  <mj-head>
+    <mj-title>Governance stopped a job: {{job_name}}</mj-title>
+    <mj-preview>A job execution failed its governance check and was marked failed.</mj-preview>
+    <mj-attributes>
+      <mj-all font-family="Inter, Arial, sans-serif" />
+      <mj-text color="#f9fafb" font-size="15px" line-height="1.6" padding="0" />
+      <mj-button background-color="#d4af35" color="#070e17" border-radius="14px" font-weight="700" inner-padding="14px 28px" align="left" />
+    </mj-attributes>
+  </mj-head>
+  <mj-body background-color="#070e17">
+    <mj-section background-color="#d4af35" padding="20px 36px">
+      <mj-column>
+        <mj-image src="https://media.base44.com/images/public/6aa887ba2a0099296d229a29/20944dc4a_logo.png" alt="Venus Shield" width="40px" align="left" padding="0" />
+      </mj-column>
+    </mj-section>
+    <mj-section background-color="#101d2d" padding="36px 36px 12px">
+      <mj-column>
+        <mj-text font-size="26px" font-weight="700" line-height="1.2">A job failed its governance check</mj-text>
+        <mj-text color="#94a3b8" padding-top="8px">Venus Shield blocked this execution and marked it failed.</mj-text>
+      </mj-column>
+    </mj-section>
+    <mj-section background-color="#101d2d" padding="12px 36px 36px">
+      <mj-column>
+        <mj-text color="#94a3b8" font-size="13px">Job</mj-text>
+        <mj-text padding-bottom="12px">{{job_name}} ({{task_uid}})</mj-text>
+        <mj-text color="#94a3b8" font-size="13px">Governing agent</mj-text>
+        <mj-text padding-bottom="12px">{{agent_id}}</mj-text>
+        <mj-text color="#94a3b8" font-size="13px">Reason</mj-text>
+        <mj-text padding-bottom="24px">{{reason}}</mj-text>
+        <mj-button href="https://venus-orbit-guard.base44.app/orchestration/history">Review executions</mj-button>
+      </mj-column>
+    </mj-section>
+    <mj-section padding="20px 36px">
+      <mj-column>
+        <mj-text color="#94a3b8" font-size="12px" align="center">Control Before Action. Venus Shield</mj-text>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>
