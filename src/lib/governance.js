@@ -137,21 +137,130 @@ export async function evaluateAction({ agent_id, action_type, target_system, amo
   return { ...data, notification };
 }
 
-// Decisions are made and validated on the server (admin role + separation of
-// duties); the browser only forwards the request.
-async function decide(kind, id, decision, reason) {
-  try {
-    const res = await base44.functions.invoke("decide", { kind, id, decision, reason });
-    return res?.data || { ok: false, error: "Decision failed." };
-  } catch (e) {
-    return { ok: false, error: e?.response?.data?.error || e?.message || "Decision failed." };
-  }
+function selfApprovalError(actor, requester, ownerEmail) {
+  if (!actor) return null;
+  if (actor.role !== "admin") return "Only a governance admin can approve this request.";
+  if (requester && actor.display === requester) return "Self-approval is not permitted: you requested this action, so you cannot approve it.";
+  if (ownerEmail && actor.email && actor.email.toLowerCase() === String(ownerEmail).toLowerCase()) return "Self-approval is not permitted: you are the owner of this agent, so you cannot approve its request.";
+  return null;
 }
 
-export const approveAgentRequest = (requestId, actor, reasonText = "") => decide("agent", requestId, "approve", reasonText);
-export const denyAgentRequest = (requestId, actor, reasonText = "") => decide("agent", requestId, "deny", reasonText);
-export const approveAction = (actionId, actor, reasonText = "") => decide("action", actionId, "approve", reasonText);
-export const denyAction = (actionId, actor, reasonText = "") => decide("action", actionId, "deny", reasonText);
+export async function approveAgentRequest(requestId, actor, reasonText = "") {
+  const req = await base44.entities.AgentApprovalRequest.get(requestId);
+  const err = selfApprovalError(actor, req.requested_by, req.owner_email);
+  if (err) return { ok: false, error: err };
+  if (req.status !== "pending") return { ok: false, error: `This request is already ${req.status}. Stale decisions are rejected.` };
+  const decidedBy = actor?.display || UNATTRIBUTED;
+  const history = [...(req.decision_history || []), { actor: decidedBy, action: "approved", reason: reasonText || "Approved.", timestamp: now() }];
+  if (req.request_type === "modified_passport") {
+    const existing = (await base44.entities.ShieldAgent.filter({ agent_id: req.agent_id }))?.[0];
+    if (!existing) return { ok: false, error: `Agent ${req.agent_id} no longer exists.` };
+    const newVersion = (existing.passport_version || 1) + 1;
+    const updated = await base44.entities.ShieldAgent.update(existing.id, {
+      systems: req.systems || [],
+      financial_limit_usd: req.financial_limit_usd || 0,
+      financial_limit_mode: req.financial_limit_mode || "approval_threshold",
+      autonomy_level: req.autonomy_level || existing.autonomy_level,
+      prohibited_actions: req.prohibited_actions || [],
+      data_permissions: req.data_permissions || [],
+      passport_version: newVersion,
+      version_history: [...(existing.version_history || []), { version: newVersion, changed_by: decidedBy, changed_at: now(), summary: `Passport modified on approval of ${req.request_uid || requestId}.` }],
+    });
+    await base44.entities.AgentApprovalRequest.update(requestId, {
+      status: "approved",
+      decided_by: decidedBy,
+      decided_date: now(),
+      resulting_agent_record_id: existing.id,
+      decision_history: history,
+      reasons: [...(req.reasons || []), `Approved by ${decidedBy} on ${now()}${reasonText ? ": " + reasonText : ". Passport updated."}`],
+    });
+    return { ok: true, agent: updated, request: req };
+  }
+  const agent = await base44.entities.ShieldAgent.create({
+    agent_id: req.agent_id,
+    name: req.name,
+    owner_name: req.owner_name,
+    owner_email: req.owner_email,
+    purpose: req.purpose,
+    systems: req.systems || [],
+    financial_limit_usd: req.financial_limit_usd || 0,
+    financial_limit_mode: req.financial_limit_mode || "approval_threshold",
+    autonomy_level: req.autonomy_level || "standard",
+    prohibited_actions: req.prohibited_actions || [],
+    data_permissions: req.data_permissions || [],
+    is_active: true,
+    passport_version: 1,
+    review_status: "reviewed",
+    runtime_health: "unknown",
+    passport_expires_at: req.approval_expires_at || null,
+    version_history: [{ version: 1, changed_by: decidedBy, changed_at: now(), summary: `Passport provisioned on approval of ${req.request_uid || requestId}.` }],
+  });
+  await base44.entities.AgentApprovalRequest.update(requestId, {
+    status: "approved",
+    decided_by: decidedBy,
+    decided_date: now(),
+    resulting_agent_record_id: agent.id,
+    decision_history: history,
+    reasons: [...(req.reasons || []), `Approved by ${decidedBy} on ${now()}${reasonText ? ": " + reasonText : ". Passport provisioned into ShieldAgent."}`],
+  });
+  return { ok: true, agent, request: req };
+}
+
+export async function denyAgentRequest(requestId, actor, reasonText = "") {
+  const req = await base44.entities.AgentApprovalRequest.get(requestId);
+  const err = selfApprovalError(actor, req.requested_by, req.owner_email);
+  if (err) return { ok: false, error: err };
+  if (req.status !== "pending") return { ok: false, error: `This request is already ${req.status}. Stale decisions are rejected.` };
+  const decidedBy = actor?.display || UNATTRIBUTED;
+  const history = [...(req.decision_history || []), { actor: decidedBy, action: "denied", reason: reasonText || "Denied.", timestamp: now() }];
+  await base44.entities.AgentApprovalRequest.update(requestId, {
+    status: "denied",
+    decided_by: decidedBy,
+    decided_date: now(),
+    decision_history: history,
+    reasons: [...(req.reasons || []), `Denied by ${decidedBy} on ${now()}${reasonText ? ": " + reasonText : ". Passport not provisioned."}`],
+  });
+  return { ok: true, request: req };
+}
+
+export async function approveAction(actionId, actor, reasonText = "") {
+  const rec = await base44.entities.ActionRecord.get(actionId);
+  const err = selfApprovalError(actor, rec.requested_by, null);
+  if (err) return { ok: false, error: err };
+  if (rec.status !== "pending_approval") return { ok: false, error: `This action is already ${rec.status}. Stale decisions are rejected.` };
+  if (rec.execution_consumed) return { ok: false, error: "This approval has already been consumed to execute the action once — it cannot be executed twice." };
+  const exp = rec.approval_expires_at ? new Date(rec.approval_expires_at).getTime() - Date.now() : null;
+  if (exp !== null && exp < 0) return { ok: false, error: "This approval has expired and can no longer be used." };
+  const decidedBy = actor?.display || UNATTRIBUTED;
+  const history = [...(rec.decision_history || []), { actor: decidedBy, action: "approved", reason: reasonText || "Approved.", timestamp: now() }];
+  await base44.entities.ActionRecord.update(actionId, {
+    status: "approved",
+    decided_by: decidedBy,
+    decided_date: now(),
+    decision_history: history,
+    execution_consumed: true,
+    executed_at: now(),
+    reasons: [...(rec.reasons || []), `Approved by ${decidedBy} on ${now()}${reasonText ? ": " + reasonText : "."} Action released for a single execution.`],
+  });
+  return { ok: true };
+}
+
+export async function denyAction(actionId, actor, reasonText = "") {
+  const rec = await base44.entities.ActionRecord.get(actionId);
+  const err = selfApprovalError(actor, rec.requested_by, null);
+  if (err) return { ok: false, error: err };
+  if (rec.status !== "pending_approval") return { ok: false, error: `This action is already ${rec.status}. Stale decisions are rejected.` };
+  const decidedBy = actor?.display || UNATTRIBUTED;
+  const history = [...(rec.decision_history || []), { actor: decidedBy, action: "denied", reason: reasonText || "Denied.", timestamp: now() }];
+  await base44.entities.ActionRecord.update(actionId, {
+    status: "denied",
+    decided_by: decidedBy,
+    decided_date: now(),
+    decision_history: history,
+    reasons: [...(rec.reasons || []), `Denied by ${decidedBy} on ${now()}${reasonText ? ": " + reasonText : "."}`],
+  });
+  return { ok: true };
+}
 
 export async function revokeAgent(agentId, actor, reasonText = "") {
   if (actor?.role !== "admin") return { ok: false, error: "Only a governance admin can revoke a passport." };

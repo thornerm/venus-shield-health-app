@@ -85,11 +85,13 @@
     "read": {
       "$or": [
         {
-          "data.owner_email": "{{user.email}}"
+          "user_condition": {
+            "role": "admin"
+          }
         },
         {
           "user_condition": {
-            "role": "admin"
+            "role": "user"
           }
         }
       ]
