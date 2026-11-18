@@ -91,6 +91,9 @@ export default function AuditDetailRow({ record, colSpan }) {
                 <Field label="Decision Deadline" value={record.deadline ? `${deadline.label} · ${fmtDate(record.deadline)}` : "None set"} />
                 <Field label="Approval Expires" value={record.approval_expires_at ? `${expiration.label} · ${fmtDate(record.approval_expires_at)}` : "No expiration"} />
                 <Field label="Reversibility" value={String(record.reversibility || "reversible").replace(/_/g, " ")} />
+                <Field label="Decisive Policy" value={record.policy_matched_name || "None"} />
+                <Field label="Decided By" value={record.decided_by || "Not yet decided"} />
+                <Field label="Decided Date" value={record.decided_date ? fmtDate(record.decided_date) : "Not yet decided"} />
                 <Field label="Record ID" value={record.id} mono />
               </div>
 

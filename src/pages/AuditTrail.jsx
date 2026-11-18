@@ -5,7 +5,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { BlastRiskBadge, StatusBadge, VerdictBadge } from "@/components/VerdictBadge";
 import PageHeader from "@/components/PageHeader";
 import Panel from "@/components/Panel";
-import FilterBar from "@/components/FilterBar";
+import AuditFilters from "@/components/audit/AuditFilters";
+import { toast } from "@/components/ui/use-toast";
 import SkeletonRows from "@/components/SkeletonRows";
 import AuditDetailRow from "@/components/audit/AuditDetailRow";
 import { verdictCounts, statusCounts, applyFilters, freshnessLabel, fmtDate, displayUid } from "@/lib/metrics";
@@ -14,14 +15,17 @@ import { ChevronDown, Download, RefreshCw, ScrollText } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const COLUMNS = 15;
+const INITIAL_FILTERS = { env: "all", range: "all", agent: "all", decision: "all", status: "all", from: "", to: "" };
 
 function exportCsv(records) {
-  const headers = ["Request UID", "Timestamp", "Agent", "Agent ID", "Action Type", "Target System", "Amount USD", "Blast Radius", "Reversibility", "Decision", "Status", "Source", "Environment", "Requested By", "Decisive Policy", "All Matched Policies", "Financial Limit Mode", "Decided By"];
+  const headers = ["Request UID", "Timestamp", "Agent", "Agent ID", "Action Type", "Target System", "Amount USD", "Blast Radius", "Reversibility", "Decision", "Status", "Source", "Environment", "Requested By", "Decisive Policy", "All Matched Policies", "Financial Limit Mode", "Decided By", "Decided Date", "Reasoning Trace"];
   const rows = records.map((r) => [
     displayUid(r, "ACT"), r.created_date, r.agent_name, r.agent_id, r.action_type, r.target_system, r.amount_usd, r.blast_radius_score, r.reversibility, r.decision, r.status, r.source || "ui", r.environment || "prod",
     r.requested_by || "", r.policy_matched_name || "", (r.policy_matches || []).map((m) => `${m.name}(${m.required_decision})`).join(" | "), r.financial_limit_mode || "", r.decided_by || "",
+    r.decided_date || "", (r.reasons || []).join(" | "),
   ]);
   downloadCsv("venus-shield-audit-trail.csv", headers, rows);
+  toast({ title: "Export started", description: `${records.length} record${records.length === 1 ? "" : "s"} saved to venus-shield-audit-trail.csv` });
 }
 
 function Tally({ label, value, tone }) {
@@ -38,8 +42,9 @@ function Tally({ label, value, tone }) {
 export default function AuditTrail() {
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [env, setEnv] = useState("all");
-  const [range, setRange] = useState("all");
+  const [filters, setFilters] = useState(INITIAL_FILTERS);
+  const setFilter = (key, value) => setFilters((p) => ({ ...p, [key]: value }));
+  const { env, range } = filters;
   const [source, setSource] = useState("all");
   const [openId, setOpenId] = useState(null);
 
@@ -52,11 +57,21 @@ export default function AuditTrail() {
   useEffect(() => { load(); }, []);
 
   const f = useMemo(() => {
-    const base = applyFilters(records, { env, range });
+    let base = applyFilters(records, { env, range });
+    if (filters.agent !== "all") base = base.filter((r) => r.agent_id === filters.agent);
+    if (filters.decision !== "all") base = base.filter((r) => r.decision === filters.decision);
+    if (filters.status !== "all") base = base.filter((r) => r.status === filters.status);
+    if (filters.from) base = base.filter((r) => new Date(r.created_date) >= new Date(`${filters.from}T00:00:00`));
+    if (filters.to) base = base.filter((r) => new Date(r.created_date) <= new Date(`${filters.to}T23:59:59.999`));
     if (source === "all") return base;
     if (source === "runtime") return base.filter((r) => r.source && r.source !== "ui");
     return base.filter((r) => !r.source || r.source === "ui");
-  }, [records, env, range, source]);
+  }, [records, filters, env, range, source]);
+  const agents = useMemo(() => {
+    const m = new Map();
+    records.forEach((r) => { if (r.agent_id && !m.has(r.agent_id)) m.set(r.agent_id, { id: r.agent_id, name: r.agent_name || r.agent_id }); });
+    return [...m.values()];
+  }, [records]);
   const v = useMemo(() => verdictCounts(f), [f]);
   const s = useMemo(() => statusCounts(f), [f]);
   const freshness = freshnessLabel(f);
@@ -78,7 +93,7 @@ export default function AuditTrail() {
         }
       />
 
-      <FilterBar env={env} setEnv={setEnv} range={range} setRange={setRange} freshness={freshness} />
+      <AuditFilters filters={filters} setFilter={setFilter} agents={agents} freshness={freshness} onClear={() => { setFilters(INITIAL_FILTERS); setSource("all"); }} />
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
         <Tally label="Allow" value={v.allow} tone="allow" />
