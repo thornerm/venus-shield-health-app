@@ -14,7 +14,7 @@ import { downloadCsv } from "@/lib/csv";
 import { ChevronDown, Download, RefreshCw, ScrollText } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const COLUMNS = 15;
+const COLUMNS = 16;
 const INITIAL_FILTERS = { env: "all", range: "all", agent: "all", decision: "all", status: "all", from: "", to: "" };
 
 function exportCsv(records) {
@@ -150,6 +150,7 @@ export default function AuditTrail() {
                   <TableHead>Source</TableHead>
                   <TableHead>Requested By</TableHead>
                   <TableHead>Decided By</TableHead>
+                  <TableHead>Decided Date</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -198,6 +199,7 @@ export default function AuditTrail() {
                         </TableCell>
                         <TableCell className="max-w-[140px] truncate text-xs text-muted-foreground" title={r.requested_by || ""}>{r.requested_by || "—"}</TableCell>
                         <TableCell className="max-w-[140px] truncate text-xs text-muted-foreground" title={r.decided_by || ""}>{r.decided_by || "—"}</TableCell>
+                        <TableCell className="whitespace-nowrap text-xs text-muted-foreground">{r.decided_date ? fmtDate(r.decided_date) : "—"}</TableCell>
                     </TableRow>,
                   ];
 
