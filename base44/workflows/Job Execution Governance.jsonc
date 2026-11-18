@@ -1,0 +1,106 @@
+{
+  "name": "Job Execution Governance",
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "job_execution_governance",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "find_agent": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "job-agent-lookup",
+            "args": {
+              "agent_type": "${ .trigger.data.agent_type }"
+            }
+          },
+          "then": "evaluate_job",
+          "x-base44": {
+            "title": "Find governing agent",
+            "description": "Match job to passport"
+          }
+        }
+      },
+      {
+        "evaluate_job": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "evaluate-ui",
+            "args": {
+              "agent_id": "${ .find_agent.agent_id }",
+              "action_type": "dispatch_job",
+              "target_system": "external_endpoint",
+              "amount_usd": 0,
+              "source": "orchestrator",
+              "params": {
+                "task_uid": "${ .trigger.data.task_uid }",
+                "job_prompt_id": "${ .trigger.data.job_prompt_id }",
+                "job_prompt_name": "${ .trigger.data.job_prompt_name }",
+                "agent_type": "${ .trigger.data.agent_type }",
+                "customer": "${ .trigger.data.customer_name }"
+              }
+            }
+          },
+          "then": "check_verdict",
+          "x-base44": {
+            "title": "Evaluate against policies",
+            "description": "evaluate-ui"
+          }
+        }
+      },
+      {
+        "check_verdict": {
+          "switch": [
+            {
+              "when": "${ .evaluate_job.decision == \"allow\" }",
+              "then": "end",
+              "x-base44": {
+                "title": "Passed evaluation"
+              }
+            },
+            {
+              "when": "${ true }",
+              "then": "enforce_job"
+            }
+          ],
+          "x-base44": {
+            "title": "Did the job pass?"
+          }
+        }
+      },
+      {
+        "enforce_job": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "job-enforce",
+            "args": {
+              "job_id": "${ .trigger.entity_id }",
+              "decision": "${ .evaluate_job.decision }",
+              "reason": "${ .evaluate_job.reason }",
+              "error": "${ .evaluate_job.error }"
+            }
+          },
+          "then": "end",
+          "x-base44": {
+            "title": "Enforce and alert admins",
+            "description": "Fail job, email admins"
+          }
+        }
+      }
+    ]
+  },
+  "trigger": {
+    "condition": null,
+    "config": {
+      "trigger_type": "entity",
+      "events": [
+        "create"
+      ],
+      "entity_name": "JobExecution"
+    }
+  },
+  "description": "When a JobExecution is created, evaluate it against active policies. If it fails, stop the job, mark it failed and alert admins."
+}
